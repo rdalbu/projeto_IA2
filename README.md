@@ -21,7 +21,7 @@ Este projeto permite controlar a reprodução de mídias (como Spotify, YouTube,
 
 2. **Navegue até a pasta do projeto:**
    ```bash
-   cd Detector_Gestos_Maos
+   cd projeto_IA2
    ```
 
 3. **Instale as dependências:**
@@ -47,7 +47,7 @@ Antes de executar, você pode ajustar os parâmetros de sensibilidade e comporta
 1.  Certifique-se de que um aplicativo de mídia (Spotify, etc.) esteja aberto e em foco.
 2.  Execute o script principal a partir da pasta raiz do projeto:
     ```bash
-    python Detector_Mao/main.py
+    python -m src.detector_gestos.main
     ```
 3.  Uma janela com a imagem da sua webcam aparecerá, e o detector começará a funcionar.
 

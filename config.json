@@ -1,0 +1,8 @@
+{
+  "indice_camera": 0,
+  "confianca_deteccao": 0.8,
+  "confianca_rastreamento": 0.8,
+  "sensibilidade_deslize_pixels": 70,
+  "frames_confirmacao_gesto": 5,
+  "intervalo_entre_comandos_segundos": 1.0
+}

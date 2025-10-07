@@ -4,5 +4,10 @@
   "confianca_rastreamento": 0.8,
   "sensibilidade_deslize_pixels": 70,
   "frames_confirmacao_gesto": 5,
-  "intervalo_entre_comandos_segundos": 1.0
+  "intervalo_entre_comandos_segundos": 1.0,
+  "mapeamento_gestos": {
+    "Deslizar Direita": "nexttrack",
+    "Deslizar Esquerda": "prevtrack",
+    "Punho Fechado": "playpause"
+  }
 }

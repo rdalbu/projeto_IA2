@@ -4,9 +4,19 @@ Este projeto permite controlar a reprodução de mídias (como Spotify, YouTube,
 
 ## Funcionalidades
 
-- **Play / Pause:** Feche a mão para pausar ou dar play.
+- **Play / Pause:** Gesto de pinça com o polegar e o indicador.
 - **Próxima Faixa:** Deslize a mão com dois dedos levantados para a direita.
 - **Faixa Anterior:** Deslize a mão com dois dedos levantados para a esquerda.
+
+## Estrutura do Projeto
+
+O código é organizado de forma modular para facilitar a manutenção e o entendimento:
+
+- **`main.py`**: O ponto de entrada da aplicação. Orquestra a captura de vídeo, a detecção da mão e o reconhecimento do gesto.
+- **`hand_detector.py`**: Contém a classe `DetectorMaos`, responsável por usar o MediaPipe para encontrar a mão na imagem e extrair as coordenadas dos seus pontos.
+- **`gesture_recognizer.py`**: Abriga a classe `GestureRecognizer`, que analisa os pontos da mão para interpretar qual gesto (pinça, deslize, etc.) está sendo realizado.
+- **`constants.py`**: Define constantes para os pontos de referência da mão, tornando o código mais legível e evitando "números mágicos".
+- **`config.json`**: Arquivo de configuração para ajustar parâmetros de sensibilidade e comportamento sem alterar o código.
 
 ## Tecnologias Utilizadas
 
@@ -32,14 +42,15 @@ Este projeto permite controlar a reprodução de mídias (como Spotify, YouTube,
 
 ## Configuração
 
-Antes de executar, você pode ajustar os parâmetros de sensibilidade e comportamento no arquivo `config.json`.
+Antes de executar, você pode ajustar os parâmetros no arquivo `config.json`:
 
-- `indice_camera`: O índice da sua webcam. `0` geralmente é a padrão. Mude para `1` ou `2` se tiver múltiplas câmeras.
-- `confianca_deteccao`: Nível de confiança mínimo (0.0 a 1.0) para a detecção inicial da mão.
-- `confianca_rastreamento`: Nível de confiança mínimo (0.0 a 1.0) para o rastreamento da mão entre frames.
-- `sensibilidade_deslize_pixels`: A distância mínima (em pixels) que a mão precisa percorrer para registrar um gesto de deslize.
-- `frames_confirmacao_gesto`: O número de frames que um gesto estático precisa ser mantido para ser confirmado.
-- `intervalo_entre_comandos_segundos`: O tempo de espera (em segundos) antes que um novo comando possa ser enviado.
+- `indice_camera`: O índice da sua webcam. `0` geralmente é a padrão.
+- `confianca_deteccao`: Nível de confiança mínimo (0.0 a 1.0) para a detecção da mão.
+- `confianca_rastreamento`: Nível de confiança mínimo (0.0 a 1.0) para o rastreamento da mão.
+- `sensibilidade_deslize_pixels`: Distância mínima (em pixels) para registrar um gesto de deslize.
+- `pinch_threshold_pixels`: Distância máxima (em pixels) entre o polegar e o indicador para registrar uma pinça.
+- `frames_confirmacao_gesto`: Número de frames que um gesto precisa ser mantido para ser confirmado.
+- `intervalo_entre_comandos_segundos`: Tempo de espera (em segundos) antes que um novo comando possa ser enviado.
 - `mapeamento_gestos`: Mapeia os gestos detectados para as teclas do `pyautogui`.
 
 ## Como Usar
@@ -53,6 +64,6 @@ Antes de executar, você pode ajustar os parâmetros de sensibilidade e comporta
 
 ## Solução de Problemas
 
-- **Webcam não encontrada:** Verifique se o `indice_camera` no arquivo `config.json` está correto. Se você tiver apenas uma webcam, o valor `0` geralmente funciona. Se você tiver várias, tente `1`, `2`, etc.
-- **Gestos não reconhecidos:** Tente ajustar os valores de `confianca_deteccao` e `confianca_rastreamento` no arquivo `config.json`. Valores mais baixos podem tornar a detecção mais fácil, mas também podem levar a mais falsos positivos.
-- **Comandos de mídia não funcionam:** Certifique-se de que o aplicativo de mídia esteja em foco (a janela do aplicativo esteja selecionada) para que ele possa receber os comandos do teclado.
+- **Webcam não encontrada:** Verifique se o `indice_camera` no `config.json` está correto.
+- **Gestos não reconhecidos:** Tente ajustar os valores de confiança e sensibilidade no `config.json`.
+- **Comandos de mídia não funcionam:** Certifique-se de que o aplicativo de mídia esteja em foco (a janela do aplicativo esteja selecionada).

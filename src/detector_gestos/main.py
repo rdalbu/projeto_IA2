@@ -4,82 +4,106 @@ import time
 import json
 import os
 from .hand_detector import DetectorMaos
+from .gesture_recognizer import GestureRecognizer
 
-def load_config():
-    # O config.json está na raiz do projeto, então subimos dois níveis
-    config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
+def load_config(path):
     try:
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        return config
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
     except FileNotFoundError:
-        print("Erro: Arquivo config.json não encontrado! Usando valores padrão.")
-        return None
+        print("Aviso: Arquivo config.json não encontrado. Usando configurações padrão.")
+        return {}
     except json.JSONDecodeError:
-        print("Erro: Falha ao decodificar o arquivo config.json! Verifique a formatação.")
-        return None
+        print("Erro: Falha ao decodificar config.json. Verifique a formatação. Usando configurações padrão.")
+        return {}
 
-def mapeia_gesto_para_acao(gesto, mapeamento_gestos):
-    return mapeamento_gestos.get(gesto)
+def validate_config(user_config):
+    default_config = {
+        "indice_camera": 0,
+        "confianca_deteccao": 0.8,
+        "confianca_rastreamento": 0.8,
+        "sensibilidade_deslize_pixels": 70,
+        "pinch_threshold_pixels": 30,
+        "frames_confirmacao_gesto": 5,
+        "intervalo_entre_comandos_segundos": 1.0,
+        "mapeamento_gestos": {
+            "Deslizar Direita": "nexttrack",
+            "Deslizar Esquerda": "prevtrack",
+            "Pinca": "playpause"
+        }
+    }
+    
+    config = default_config
+    config.update(user_config)
+
+    if not isinstance(config["indice_camera"], int) or config["indice_camera"] < 0:
+        print(f"Aviso: 'indice_camera' inválido ({config['indice_camera']}). Usando padrão: {default_config['indice_camera']}.")
+        config["indice_camera"] = default_config["indice_camera"]
+
+    if not isinstance(config["confianca_deteccao"], float) or not (0.0 <= config["confianca_deteccao"] <= 1.0):
+        print(f"Aviso: 'confianca_deteccao' inválida. Usando padrão: {default_config['confianca_deteccao']}.")
+        config["confianca_deteccao"] = default_config["confianca_deteccao"]
+
+    return config
+
+def processa_gesto(gesto_atual, ultimo_gesto, contador_frames, frames_para_confirmar):
+    if gesto_atual and ("Deslizar" in gesto_atual or gesto_atual == "Pinca"):
+        return gesto_atual, gesto_atual, 1
+
+    if gesto_atual == ultimo_gesto and gesto_atual is not None:
+        contador_frames += 1
+    else:
+        contador_frames = 1
+    
+    gesto_confirmado = None
+    if contador_frames >= frames_para_confirmar:
+        gesto_confirmado = gesto_atual
+
+    return gesto_confirmado, gesto_atual, contador_frames
 
 def main():
-    config = load_config()
-    if config is None:
-        config = {
-            "indice_camera": 0,
-            "confianca_deteccao": 0.8,
-            "confianca_rastreamento": 0.8,
-            "sensibilidade_deslize_pixels": 70,
-            "frames_confirmacao_gesto": 5,
-            "intervalo_entre_comandos_segundos": 1.0,
-            "mapeamento_gestos": {
-                "Deslizar Direita": "nexttrack",
-                "Deslizar Esquerda": "prevtrack",
-                "Punho Fechado": "playpause"
-            }
-        }
+    config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
+    user_config = load_config(config_path)
+    config = validate_config(user_config)
 
     cap = cv2.VideoCapture(config['indice_camera'])
+    if not cap.isOpened():
+        print(f"Erro: Não foi possível abrir a câmera com índice {config['indice_camera']}.")
+        return
+
     detector = DetectorMaos(
         deteccao_confianca=config['confianca_deteccao'],
-        rastreio_confianca=config['confianca_rastreamento'],
-        swipe_threshold=config['sensibilidade_deslize_pixels']
+        rastreio_confianca=config['confianca_rastreamento']
+    )
+    recognizer = GestureRecognizer(
+        swipe_threshold=config['sensibilidade_deslize_pixels'],
+        pinch_threshold=config.get('pinch_threshold_pixels', 30)
     )
 
     mapeamento_gestos = config.get("mapeamento_gestos", {})
-
     tempo_ultimo_comando = 0
-    intervalo_comandos = config['intervalo_entre_comandos_segundos']
     ultimo_gesto_detectado = None
     contador_frames_gesto = 0
-    FRAMES_PARA_CONFIRMAR = config['frames_confirmacao_gesto']
 
     while True:
-        _, imagem = cap.read()
-        if not _:
-            print("Erro: Não foi possível ler a imagem da câmera. Verifique o 'indice_camera' no config.json")
+        sucesso, imagem = cap.read()
+        if not sucesso:
+            print("Erro: Falha ao ler o frame da câmera.")
             break
+        
         imagem = cv2.flip(imagem, 1)
-
         imagem = detector.encontrar_maos(imagem)
         lista_pontos = detector.encontrar_pontos(imagem)
 
-        gesto_atual = detector.reconhecer_gesto(lista_pontos)
+        recognizer.update_history(lista_pontos)
+        gesto_atual = recognizer.recognize_gesture(lista_pontos)
         
-        gesto_confirmado = None
-        if gesto_atual and ("Deslizar" in gesto_atual or gesto_atual == "Punho Fechado"):
-            gesto_confirmado = gesto_atual
-        elif gesto_atual == ultimo_gesto_detectado and gesto_atual is not None:
-            contador_frames_gesto += 1
-        else:
-            contador_frames_gesto = 1
-            ultimo_gesto_detectado = gesto_atual
+        gesto_confirmado, ultimo_gesto_detectado, contador_frames_gesto = processa_gesto(
+            gesto_atual, ultimo_gesto_detectado, contador_frames_gesto, config['frames_confirmacao_gesto']
+        )
 
-        if contador_frames_gesto >= FRAMES_PARA_CONFIRMAR:
-            gesto_confirmado = ultimo_gesto_detectado
-
-        if gesto_confirmado and (time.time() - tempo_ultimo_comando > intervalo_comandos):
-            acao = mapeia_gesto_para_acao(gesto_confirmado, mapeamento_gestos)
+        if gesto_confirmado and (time.time() - tempo_ultimo_comando > config['intervalo_entre_comandos_segundos']):
+            acao = mapeamento_gestos.get(gesto_confirmado)
             if acao:
                 pyautogui.press(acao)
                 print(f"Gesto Confirmado: {gesto_confirmado} -> Ação: {acao}")
@@ -88,7 +112,7 @@ def main():
                 ultimo_gesto_detectado = None
                 contador_frames_gesto = 0
 
-        cv2.imshow("Captura", imagem)
+        cv2.imshow("Captura de Gestos", imagem)
         if cv2.waitKey(1) & 0xFF == 27:
             break
 

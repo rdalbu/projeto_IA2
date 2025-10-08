@@ -4,81 +4,48 @@ import time
 import json
 import os
 from .hand_detector import DetectorMaos
-from .gesture_recognizer import GestureRecognizer
+from .ml_gesture import KerasGestureClassifier
 
 def load_config(path):
     try:
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print("Aviso: Arquivo config.json não encontrado. Usando configurações padrão.")
+        print(f"Aviso: Arquivo '{os.path.basename(path)}' não encontrado. Usando configurações padrão.")
         return {}
     except json.JSONDecodeError:
-        print("Erro: Falha ao decodificar config.json. Verifique a formatação. Usando configurações padrão.")
+        print(f"Erro: Falha ao decodificar '{os.path.basename(path)}'. Usando configurações padrão.")
         return {}
-
-def validate_config(user_config):
-    default_config = {
-        "indice_camera": 0,
-        "confianca_deteccao": 0.8,
-        "confianca_rastreamento": 0.8,
-        "sensibilidade_deslize_pixels": 70,
-        "pinch_threshold_pixels": 30,
-        "frames_confirmacao_gesto": 5,
-        "intervalo_entre_comandos_segundos": 1.0,
-        "mapeamento_gestos": {
-            "Deslizar Direita": "nexttrack",
-            "Deslizar Esquerda": "prevtrack",
-            "Pinca": "playpause"
-        }
-    }
-    
-    config = default_config
-    config.update(user_config)
-
-    if not isinstance(config["indice_camera"], int) or config["indice_camera"] < 0:
-        print(f"Aviso: 'indice_camera' inválido ({config['indice_camera']}). Usando padrão: {default_config['indice_camera']}.")
-        config["indice_camera"] = default_config["indice_camera"]
-
-    if not isinstance(config["confianca_deteccao"], float) or not (0.0 <= config["confianca_deteccao"] <= 1.0):
-        print(f"Aviso: 'confianca_deteccao' inválida. Usando padrão: {default_config['confianca_deteccao']}.")
-        config["confianca_deteccao"] = default_config["confianca_deteccao"]
-
-    return config
-
-def processa_gesto(gesto_atual, ultimo_gesto, contador_frames, frames_para_confirmar):
-    if gesto_atual and ("Deslizar" in gesto_atual or gesto_atual == "Pinca"):
-        return gesto_atual, gesto_atual, 1
-
-    if gesto_atual == ultimo_gesto and gesto_atual is not None:
-        contador_frames += 1
-    else:
-        contador_frames = 1
-    
-    gesto_confirmado = None
-    if contador_frames >= frames_para_confirmar:
-        gesto_confirmado = gesto_atual
-
-    return gesto_confirmado, gesto_atual, contador_frames
 
 def main():
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
-    user_config = load_config(config_path)
-    config = validate_config(user_config)
+    config = load_config(config_path)
 
-    cap = cv2.VideoCapture(config['indice_camera'])
+    cap = cv2.VideoCapture(config.get('indice_camera', 0))
     if not cap.isOpened():
-        print(f"Erro: Não foi possível abrir a câmera com índice {config['indice_camera']}.")
+        print(f"Erro: Não foi possível abrir a câmera com índice {config.get('indice_camera', 0)}.")
         return
 
     detector = DetectorMaos(
-        deteccao_confianca=config['confianca_deteccao'],
-        rastreio_confianca=config['confianca_rastreamento']
+        deteccao_confianca=config.get('confianca_deteccao', 0.8),
+        rastreio_confianca=config.get('confianca_rastreamento', 0.8)
     )
-    recognizer = GestureRecognizer(
-        swipe_threshold=config['sensibilidade_deslize_pixels'],
-        pinch_threshold=config.get('pinch_threshold_pixels', 30)
-    )
+
+    ml_classifier = None
+    if config.get("usar_modelo_gesto"):
+        try:
+            ml_classifier = KerasGestureClassifier(
+                model_path=config.get("gesto_modelo_path", ""),
+                labels=config.get("gesto_labels", []),
+            )
+            print("Classificador de gestos (Keras) carregado com sucesso.")
+        except Exception as e:
+            print(f"ERRO CRÍTICO ao carregar o modelo de gesto: {e}")
+            print("Verifique se o caminho do modelo em 'config.json' está correto e se o arquivo existe.")
+            return # Encerra o programa se o modelo não puder ser carregado
+    else:
+        print("Aviso: O uso do modelo de gesto está desabilitado em 'config.json'. O programa não fará nada.")
+        return
 
     mapeamento_gestos = config.get("mapeamento_gestos", {})
     tempo_ultimo_comando = 0
@@ -88,29 +55,41 @@ def main():
     while True:
         sucesso, imagem = cap.read()
         if not sucesso:
-            print("Erro: Falha ao ler o frame da câmera.")
             break
         
         imagem = cv2.flip(imagem, 1)
         imagem = detector.encontrar_maos(imagem)
         lista_pontos = detector.encontrar_pontos(imagem)
 
-        recognizer.update_history(lista_pontos)
-        gesto_atual = recognizer.recognize_gesture(lista_pontos)
+        gesto_atual = None
+        if ml_classifier and lista_pontos:
+            try:
+                lbl, prob = ml_classifier.predict(lista_pontos, handedness='Right')
+                if lbl and prob >= config.get("gesto_confianca_minima", 0.7):
+                    gesto_atual = lbl
+            except Exception as e:
+                print(f"Erro durante a predição: {e}") # Adicionado para depuração
+                gesto_atual = None
         
-        gesto_confirmado, ultimo_gesto_detectado, contador_frames_gesto = processa_gesto(
-            gesto_atual, ultimo_gesto_detectado, contador_frames_gesto, config['frames_confirmacao_gesto']
-        )
+        # Lógica de confirmação de gesto
+        if gesto_atual == ultimo_gesto_detectado and gesto_atual is not None:
+            contador_frames_gesto += 1
+        else:
+            contador_frames_gesto = 1
+        ultimo_gesto_detectado = gesto_atual
+        
+        gesto_confirmado = None
+        if contador_frames_gesto >= config.get('frames_confirmacao_gesto', 5):
+            gesto_confirmado = gesto_atual
+            contador_frames_gesto = 0 # Reseta para evitar repetição imediata
 
-        if gesto_confirmado and (time.time() - tempo_ultimo_comando > config['intervalo_entre_comandos_segundos']):
+        if gesto_confirmado and (time.time() - tempo_ultimo_comando > config.get('intervalo_entre_comandos_segundos', 1.0)):
             acao = mapeamento_gestos.get(gesto_confirmado)
             if acao:
                 pyautogui.press(acao)
                 print(f"Gesto Confirmado: {gesto_confirmado} -> Ação: {acao}")
                 cv2.putText(imagem, gesto_confirmado, (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
                 tempo_ultimo_comando = time.time()
-                ultimo_gesto_detectado = None
-                contador_frames_gesto = 0
 
         cv2.imshow("Captura de Gestos", imagem)
         if cv2.waitKey(1) & 0xFF == 27:

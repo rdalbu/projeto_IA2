@@ -2,13 +2,15 @@
   "indice_camera": 0,
   "confianca_deteccao": 0.8,
   "confianca_rastreamento": 0.8,
-  "sensibilidade_deslize_pixels": 70,
-  "pinch_threshold_pixels": 30,
   "frames_confirmacao_gesto": 5,
   "intervalo_entre_comandos_segundos": 1.0,
+  "usar_modelo_gesto": true,
+  "gesto_modelo_path": "models/meu_modelo/hand-gesture.h5",
+  "gesto_labels": ["pinça", "passar", "retroceder", "neutro"],
+  "gesto_confianca_minima": 0.95,
   "mapeamento_gestos": {
-    "Deslizar Direita": "nexttrack",
-    "Deslizar Esquerda": "prevtrack",
-    "Pinca": "playpause"
+    "pinça": "playpause",
+    "passar": "nexttrack",
+    "retroceder": "prevtrack"
   }
 }

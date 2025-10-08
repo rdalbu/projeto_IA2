@@ -1,3 +1,4 @@
 opencv-python
 mediapipe
 pyautogui
+tensorflow; platform_system == "Windows"

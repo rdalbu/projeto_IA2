@@ -62,4 +62,9 @@ if not os.path.exists(OUTPUT_MODEL_DIR):
 output_path = os.path.join(OUTPUT_MODEL_DIR, OUTPUT_MODEL_NAME)
 print(f"Salvando o modelo treinado em '{output_path}'...")
 model.save(output_path)
-print("Modelo salvo com sucesso!")
+print("Modelo H5 salvo com sucesso!")
+
+# --- Converter para TensorFlow.js ---
+print("\nConvertendo modelo para TensorFlow.js...")
+os.system(f'tensorflowjs_converter --input_format=keras {output_path} {OUTPUT_MODEL_DIR}')
+print(f"Modelo convertido e salvo em '{OUTPUT_MODEL_DIR}'.")

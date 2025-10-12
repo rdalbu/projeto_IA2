@@ -3,6 +3,7 @@ import pyautogui
 import time
 import json
 import os
+import serial
 from .hand_detector import DetectorMaos
 from .ml_gesture import KerasGestureClassifier
 
@@ -21,9 +22,24 @@ def main():
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
     config = load_config(config_path)
 
+    ser = None
+    if config.get('usar_serial', False):
+        try:
+            ser = serial.Serial(
+                port=config.get('serial_port', 'COM5'),
+                baudrate=config.get('serial_baudrate', 115200),
+                timeout=1
+            )
+            print(f"Conectado à porta serial {config.get('serial_port', 'COM5')}.")
+        except serial.SerialException as e:
+            print(f"ERRO CRÍTICO ao conectar na porta serial: {e}")
+            print("Verifique se a porta está correta no 'config.json' e se o ESP32 está conectado.")
+            return
+
     cap = cv2.VideoCapture(config.get('indice_camera', 0))
     if not cap.isOpened():
         print(f"Erro: Não foi possível abrir a câmera com índice {config.get('indice_camera', 0)}.")
+        if ser: ser.close()
         return
 
     detector = DetectorMaos(
@@ -42,9 +58,11 @@ def main():
         except Exception as e:
             print(f"ERRO CRÍTICO ao carregar o modelo de gesto: {e}")
             print("Verifique se o caminho do modelo em 'config.json' está correto e se o arquivo existe.")
-            return # Encerra o programa se o modelo não puder ser carregado
+            if ser: ser.close()
+            return
     else:
         print("Aviso: O uso do modelo de gesto está desabilitado em 'config.json'. O programa não fará nada.")
+        if ser: ser.close()
         return
 
     mapeamento_gestos = config.get("mapeamento_gestos", {})
@@ -68,10 +86,9 @@ def main():
                 if lbl and prob >= config.get("gesto_confianca_minima", 0.7):
                     gesto_atual = lbl
             except Exception as e:
-                print(f"Erro durante a predição: {e}") # Adicionado para depuração
+                print(f"Erro durante a predição: {e}")
                 gesto_atual = None
         
-        # Lógica de confirmação de gesto
         if gesto_atual == ultimo_gesto_detectado and gesto_atual is not None:
             contador_frames_gesto += 1
         else:
@@ -81,13 +98,21 @@ def main():
         gesto_confirmado = None
         if contador_frames_gesto >= config.get('frames_confirmacao_gesto', 5):
             gesto_confirmado = gesto_atual
-            contador_frames_gesto = 0 # Reseta para evitar repetição imediata
+            contador_frames_gesto = 0
 
         if gesto_confirmado and (time.time() - tempo_ultimo_comando > config.get('intervalo_entre_comandos_segundos', 1.0)):
             acao = mapeamento_gestos.get(gesto_confirmado)
             if acao:
-                pyautogui.press(acao)
-                print(f"Gesto Confirmado: {gesto_confirmado} -> Ação: {acao}")
+                if ser:
+                    try:
+                        ser.write(f'{acao}\n'.encode('utf-8'))
+                        print(f"Gesto: {gesto_confirmado} -> Enviando comando serial: '{acao}'")
+                    except serial.SerialException as e:
+                        print(f"Erro ao enviar comando serial: {e}")
+                else:
+                    pyautogui.press(acao)
+                    print(f"Gesto: {gesto_confirmado} -> Ação local: {acao}")
+                
                 cv2.putText(imagem, gesto_confirmado, (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
                 tempo_ultimo_comando = time.time()
 
@@ -97,6 +122,9 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
+    if ser:
+        ser.close()
+        print("Porta serial fechada.")
 
 if __name__ == '__main__':
     main()

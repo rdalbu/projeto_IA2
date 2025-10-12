@@ -1,96 +1,124 @@
-# Projeto de Controle por Gestos com IA
+# Controle de Mídia por Gestos com IA e ESP32
 
-Este projeto permite controlar o computador (ex: tocar e pausar músicas) através de gestos de mão customizados, treinados por você.
+Este projeto permite controlar a reprodução de mídia (play/pause, próxima/anterior) em qualquer dispositivo com Bluetooth (como um celular, tablet ou smart TV) usando gestos de mão capturados por uma webcam.
 
-## Pré-requisitos
+O sistema utiliza uma inteligência artificial para reconhecer os gestos e um microcontrolador ESP32 para enviar os comandos como se fosse um teclado Bluetooth, tornando-o universalmente compatível.
 
-- Python 3.8+
-- Um navegador web moderno (Chrome, Firefox)
-- Uma webcam
+## Funcionalidades
 
-## Instalação
+- **Reconhecimento de Gestos em Tempo Real:** Usa MediaPipe e TensorFlow/Keras para alta precisão.
+- **Controle Universal via Bluetooth:** O ESP32 atua como um teclado de mídia BLE, compatível com Android, iOS, Windows, macOS, etc.
+- **Interface de Linha de Comando:** Execução simples e direta com feedback visual através de uma janela do OpenCV.
+- **Sistema de Treinamento Completo:** Inclui uma interface web para coletar dados de novos gestos e scripts para treinar seu próprio modelo de IA.
 
-1.  **Clone o repositório** (ou baixe o ZIP).
-2.  **Instale as dependências** Python. Abra um terminal na pasta raiz do projeto e execute:
-    ```bash
+## Como Funciona
+
+A arquitetura do sistema segue este fluxo:
+
+`Webcam` → `Python (OpenCV)` → `Reconhecimento de IA (TensorFlow)` → `Comando via Porta Serial` → `ESP32` → `Comando via Bluetooth` → `Dispositivo Alvo (Celular, etc.)`
+
+## Requisitos de Hardware
+
+- Uma webcam conectada ao seu computador.
+- Um microcontrolador ESP32.
+
+---
+
+
+## SETUP: Instalação e Configuração
+
+Siga estes 4 passos para preparar todo o ambiente.
+
+### Passo 1: Baixar o Projeto
+
+Clone ou baixe este repositório para o seu computador.
+
+### Passo 2: Configurar o Ambiente Python (Recomendado)
+
+Para evitar conflitos de pacotes, é altamente recomendado usar um ambiente virtual.
+
+1.  **Abra um terminal** na pasta raiz do projeto.
+2.  **Crie o ambiente virtual** (só precisa fazer isso uma vez):
+    ```sh
+    python -m venv .venv
+    ```
+3.  **Ative o ambiente virtual** (precisa fazer isso toda vez que for usar o projeto):
+    ```sh
+    # No Windows (PowerShell)
+    .\.venv\Scripts\activate
+    ```
+    *Você saberá que funcionou quando vir `(.venv)` no início do seu terminal.*
+
+4.  **Instale as dependências** com o ambiente ativo:
+    ```sh
     pip install -r requirements.txt
     ```
 
-## Fluxo de Trabalho
+### Passo 3: Preparar o ESP32
 
-O projeto é dividido em três etapas:
+1.  **Abra a Arduino IDE**.
+2.  **Instale a Biblioteca:** Vá em `Tools > Manage Libraries...` e procure e instale a biblioteca `BleKeyboard` de T-vK.
+3.  **Carregue o Sketch:** Abra o arquivo `esp32_sketch/esp32_controller.ino` na Arduino IDE.
+4.  **Faça o Upload:** Conecte seu ESP32 ao computador, selecione a placa e a porta COM correta em `Tools`, e clique no botão de Upload (seta para a direita).
 
-### 1. Coleta de Dados (Navegador Web)
+### Passo 4: Parear o Bluetooth
 
-- **Objetivo:** Coletar amostras dos gestos que você quer que o sistema reconheça.
-- **Como fazer:**
-  1. Inicie um servidor web local na pasta raiz. O mais simples é usar Python:
-     ```bash
-     python -m http.server
-     ```
-  2. Abra o navegador e acesse `http://localhost:8000`.
-  3. Defina os nomes das suas classes de gestos (ex: `pinca`, `passar`, `neutro`).
-  4. Use os controles para gravar várias amostras de cada gesto.
-  5. Ao final, clique em **"Exportar Dataset"** para baixar o arquivo `gesture-dataset.json`.
+1.  Com o ESP32 ligado, pegue seu dispositivo de mídia (celular, tablet, etc.).
+2.  Procure por novos dispositivos Bluetooth.
+3.  Pareie com o dispositivo chamado **"Controle de Gestos IA"**.
 
-### 2. Treinamento do Modelo (Python)
+---
 
-- **Objetivo:** Usar as amostras coletadas para treinar um modelo de IA.
-- **Como fazer:**
-  1. Mova o arquivo `gesture-dataset.json` para a pasta raiz do projeto.
-  2. No terminal, na pasta raiz, execute o script de treinamento:
-     ```bash
-     python train_model.py
-     ```
-  3. **Automação:** Este script agora faz duas coisas:
-     - Cria o modelo principal `models/meu_modelo/hand-gesture.h5`.
-     - **Exporta automaticamente** o modelo para o formato **TensorFlow.js** (`model.json` e `weights.bin`) na mesma pasta, garantindo que os entregáveis estejam sempre atualizados.
 
-### 3. Execução e Controle (Python)
+## USO: Executando a Aplicação
 
-- **Objetivo:** Rodar o programa que usa a câmera para reconhecer seus gestos e controlar o computador.
-- **Como fazer:**
-  1. **Configure:** Verifique e ajuste o arquivo `config.json` conforme necessário (veja detalhes abaixo).
-  2. **Execute:** No terminal, na pasta raiz, rode o programa principal:
-     ```bash
-     python -m src.detector_gestos.main
-     ```
-  3. Uma janela com a câmera se abrirá, e seus gestos passarão a controlar as ações mapeadas.
+Com o setup concluído, siga os passos abaixo para usar o controle de gestos.
 
-## Checklist de Testes
+1.  **Conecte o ESP32** ao computador (para que a porta serial seja reconhecida).
+2.  **Ative o Ambiente Virtual** (se não estiver ativo):
+    ```sh
+    .\.venv\Scripts\activate
+    ```
+3.  **Configure a Porta Serial**:
+    - Abra o arquivo `config.json`.
+    - Encontre a chave `"serial_port"` e altere o valor para a porta COM que seu ESP32 está usando (ex: `"COM3"`, `"COM5"`, etc.).
+    - Garanta que `"usar_serial"` esteja como `true`.
+4.  **Execute o Programa Principal**:
+    No terminal (com o ambiente ativo), execute:
+    ```sh
+    python -m src.detector_gestos.main
+    ```
+5.  Uma janela com a imagem da sua câmera se abrirá, e o reconhecimento de gestos começará a funcionar.
 
-Para garantir que tudo funciona, siga este checklist:
+---
 
-- [ ] **1. Servidor Web:** O comando `python -m http.server` inicia sem erros.
-- [ ] **2. Coleta de Dados:** A página `index.html` carrega no navegador e a imagem da câmera aparece.
-- [ ] **3. Gravação de Gestos:** É possível gravar amostras para cada gesto e o contador de amostras aumenta.
-- [ ] **4. Exportação do Dataset:** O botão "Exportar Dataset" gera e baixa o arquivo `gesture-dataset.json`.
-- [ ] **5. Treinamento do Modelo:** O script `python train_model.py` executa até o fim, sem erros, e cria/atualiza os arquivos do modelo em `models/meu_modelo/`.
-- [ ] **6. Execução Principal:** O comando `python -m src.detector_gestos.main` inicia e abre a janela da câmera sem erros.
-- [ ] **7. Reconhecimento de Gestos:** Ao fazer um gesto treinado na frente da câmera, o nome do gesto e a confiança aparecem na janela.
-- [ ] **8. Controle do Sistema:** A ação mapeada para o gesto (ex: "playpause") é executada corretamente no sistema operacional.
 
-## Detalhes da Configuração (`config.json`)
+## AVANÇADO: Treinando Seus Próprios Gestos
 
-Este arquivo centraliza as configurações do detector de gestos.
+Se quiser adicionar novos gestos ou melhorar a precisão, siga estas fases.
 
-- `indice_camera`: `0` para a câmera padrão. Mude se tiver múltiplas câmeras.
-- `confianca_deteccao`: Sensibilidade mínima (`0.0` a `1.0`) para detectar uma mão.
-- `confianca_rastreamento`: Sensibilidade mínima (`0.0` a `1.0`) para rastrear a mão após a detecção inicial.
-- `frames_confirmacao_gesto`: Número de frames seguidos que um gesto deve ser detectado para ser confirmado. Evita acionamentos acidentais.
-- `intervalo_entre_comandos_segundos`: Tempo de espera (em segundos) antes de permitir que um novo comando seja disparado.
-- `usar_modelo_gesto`: `true` para usar seu modelo treinado. `false` para desativar o reconhecimento.
-- `gesto_modelo_path`: Caminho para o seu modelo `.h5`.
-- `gesto_labels`: **Importante:** A ordem dos nomes dos gestos deve ser **exatamente a mesma** usada na interface web de coleta.
-- `gesto_confianca_minima`: Limiar de confiança (`0.0` a `1.0`) para que um gesto seja considerado válido.
-- `mapeamento_gestos`: Mapeia um nome de gesto para uma tecla ou comando do `pyautogui`. Gestos não listados aqui serão ignorados.
+### Fase 1: Coleta de Dados
 
-## Estrutura de Arquivos Essenciais
+1.  **Inicie o Servidor Web:** No terminal (na pasta raiz do projeto), execute:
+    ```sh
+    python -m http.server
+    ```
+2.  **Acesse a Interface:** Abra seu navegador e vá para `http://localhost:8000`.
+3.  **Grave as Amostras:** Na página, defina os nomes dos seus gestos e use os controles para gravar dezenas de amostras para cada um.
+4.  **Exporte e Salve:** Ao final, clique em **"Exportar Dataset"**. Salve o arquivo `gesture-dataset.json` na **pasta raiz** do projeto.
 
-- `index.html`: Interface web para coleta de dados.
-- `src/app.js`: Lógica da interface web.
-- `requirements.txt`: Lista de dependências Python.
-- `gesture-dataset.json`: Arquivo com suas amostras de gestos (gerado por você).
-- `train_model.py`: Script para treinar o modelo de IA.
-- `config.json`: Arquivo de configuração principal.
-- `src/detector_gestos/main.py`: O programa principal que executa o controle por gestos.
+### Fase 2: Treinamento do Modelo
+
+1.  Com o `gesture-dataset.json` na pasta raiz, execute o script de treinamento:
+    ```sh
+    python treinamento\train_model.py
+    ```
+2.  Este script usará seu dataset para gerar um novo modelo de IA em `models/meu_modelo/hand-gesture.h5`.
+
+### Fase 3: Atualizar a Configuração
+
+1.  Abra o `config.json`.
+2.  Atualize a lista `"gesto_labels"` para que contenha os nomes exatos dos seus novos gestos, na mesma ordem em que foram gravados.
+3.  Adicione o mapeamento dos novos gestos em `"mapeamento_gestos"`.
+
+Após esses passos, ao executar o programa principal novamente, ele estará usando seu novo modelo treinado.

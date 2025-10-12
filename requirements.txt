@@ -1,5 +1,11 @@
 opencv-python
-mediapipe
 pyautogui
-tensorflow; platform_system == "Windows"
-tensorflowjs
+pyserial
+Pillow
+packaging==23.2
+cffi==1.16.0
+
+# Travando as versões das bibliotecas de ML para garantir a compatibilidade
+tensorflow==2.15.0; platform_system == "Windows"
+mediapipe==0.10.9
+tensorflowjs==4.17.0

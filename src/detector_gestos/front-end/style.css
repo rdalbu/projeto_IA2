@@ -25,6 +25,7 @@ body {
 
 /* ==== CAMERA ==== */
 .camera-card {
+  top: 10px;
   width: 80%;
   max-width: 960px;
   aspect-ratio: 16/9;

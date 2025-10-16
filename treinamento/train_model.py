@@ -3,12 +3,10 @@ import numpy as np
 import tensorflow as tf
 import os
 
-# --- Parâmetros ---
 DATASET_PATH = 'gesture-dataset.json'
 OUTPUT_MODEL_DIR = 'models/meu_modelo'
-OUTPUT_MODEL_NAME = 'hand-gesture.h5' # Usar o formato H5 que é compatível
+OUTPUT_MODEL_NAME = 'hand-gesture.h5'
 
-# --- Carregar o Dataset ---
 print(f"Carregando dataset de '{DATASET_PATH}'...")
 try:
     with open(DATASET_PATH, 'r') as f:
@@ -26,7 +24,6 @@ input_dim = features.shape[1]
 
 print(f"Dataset carregado: {len(features)} amostras, {num_classes} classes ({labels}), {input_dim} dimensões.")
 
-# --- Construir o Modelo (mesma arquitetura da web) ---
 print("Construindo o modelo Keras...")
 model = tf.keras.Sequential([
     tf.keras.layers.Input(shape=(input_dim,)),
@@ -39,12 +36,11 @@ model = tf.keras.Sequential([
 
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-    loss='sparse_categorical_crossentropy', # Usar sparse pois os alvos não são one-hot
+    loss='sparse_categorical_crossentropy',
     metrics=['accuracy']
 )
 model.summary()
 
-# --- Treinar o Modelo ---
 print("\nIniciando o treinamento...")
 history = model.fit(
     features,
@@ -56,7 +52,6 @@ history = model.fit(
 )
 print("Treinamento concluído.")
 
-# --- Salvar o Modelo ---
 if not os.path.exists(OUTPUT_MODEL_DIR):
     os.makedirs(OUTPUT_MODEL_DIR)
 output_path = os.path.join(OUTPUT_MODEL_DIR, OUTPUT_MODEL_NAME)
@@ -64,7 +59,6 @@ print(f"Salvando o modelo treinado em '{output_path}'...")
 model.save(output_path)
 print("Modelo H5 salvo com sucesso!")
 
-# --- Converter para TensorFlow.js ---
 print("\nConvertendo modelo para TensorFlow.js...")
 os.system(f'tensorflowjs_converter --input_format=keras {output_path} {OUTPUT_MODEL_DIR}')
 print(f"Modelo convertido e salvo em '{OUTPUT_MODEL_DIR}'.")

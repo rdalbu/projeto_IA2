@@ -48,10 +48,10 @@ window.KwsPredictor = (() => {
           onPrediction(preds);
         }
       }, {
-        includeSpectrogram: false, // Não precisamos do espectrograma
-        probabilityThreshold: 0.7, // Limiar de confiança
+        includeSpectrogram: false,
+        probabilityThreshold: 0.7,
         invokeCallbackOnNoiseAndUnknown: true,
-        overlapFactor: 0.5 // Executa a predição a cada 500ms para uma janela de 1s
+        overlapFactor: 0.5
       });
       isRunning = true;
       console.log("Escuta de KWS iniciada.");
@@ -68,7 +68,7 @@ window.KwsPredictor = (() => {
         console.log("Escuta de KWS parada.");
       } catch (e) {
         console.warn("Erro ao parar a escuta de KWS (pode já ter parado):", e);
-        isRunning = false; // Garante que o estado seja consistente
+        isRunning = false;
       }
     }
   }

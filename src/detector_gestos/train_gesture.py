@@ -90,7 +90,7 @@ def main():
 
         cv2.imshow('Treino de Gestos', vis)
         k = cv2.waitKey(1) & 0xFF
-        if k == 27:  # ESC
+        if k == 27:
             break
         if k in range(ord('1'), ord('9')+1):
             idx = k - ord('1')
@@ -137,7 +137,6 @@ def main():
             if model is None:
                 last_info = "Treine antes de salvar."
             else:
-                # Salva em SavedModel (diretório) ou .h5 se path terminar com .h5
                 p = model_out
                 if p.lower().endswith('.h5'):
                     model.save(p)

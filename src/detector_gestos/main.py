@@ -13,7 +13,6 @@ from .hand_detector import DetectorMaos
 from .ml_gesture import KerasGestureClassifier
 from .kws_classifier import KwsClassifier
 
-# --- Variáveis Globais ---
 command_queue = queue.Queue()
 audio_buffer = []
 buffer_lock = threading.Lock()
@@ -30,14 +29,12 @@ def load_config(path):
         return {}
 
 def audio_callback(indata, frames, time, status):
-    """Esta função é chamada pelo sounddevice para cada bloco de áudio."""
     if status:
         print(status)
     with buffer_lock:
         audio_buffer.append(indata.copy())
 
 def process_audio_thread(kws_classifier, config):
-    """Thread que processa o buffer de áudio e realiza a predição."""
     global audio_buffer
     min_confidence = config.get("kws_confianca_minima", 0.9)
     mapeamento_kws = config.get("mapeamento_kws", {})
@@ -49,14 +46,12 @@ def process_audio_thread(kws_classifier, config):
     while True:
         with buffer_lock:
             if len(audio_buffer) > 0:
-                # Concatena os blocos de áudio do buffer
                 data = np.concatenate(audio_buffer)
                 audio_buffer.clear()
             else:
                 data = None
         
         if data is not None and len(data) >= expected_length:
-            # Pega o trecho mais recente correspondente à duração do modelo
             audio_segment = data[-expected_length:, 0]
             
             try:
@@ -69,7 +64,6 @@ def process_audio_thread(kws_classifier, config):
             except Exception as e:
                 print(f"Erro na predição de áudio: {e}")
 
-        # Pequena pausa para não sobrecarregar a CPU
         time.sleep(0.5)
 
 
@@ -91,7 +85,6 @@ def main():
             print("Verifique se a porta está correta no 'config.json' e se o ESP32 está conectado.")
             return
 
-    # --- Inicialização do KWS (Áudio) ---
     kws_classifier = None
     audio_stream = None
     if config.get("usar_kws"):
@@ -112,7 +105,7 @@ def main():
                 callback=audio_callback,
                 samplerate=kws_classifier.sample_rate,
                 channels=1,
-                device=config.get("audio_input_device_index") # None para usar o padrão
+                device=config.get("audio_input_device_index")
             )
             audio_stream.start()
             print("Classificador de palavras-chave (KWS) carregado e stream de áudio iniciado.")
@@ -122,7 +115,6 @@ def main():
             if ser: ser.close()
             return
 
-    # --- Inicialização do Detector de Gestos (Vídeo) ---
     cap = None
     detector = None
     ml_classifier = None
@@ -153,7 +145,6 @@ def main():
         print("Aviso: O uso do modelo de gesto está desabilitado em 'config.json'.")
 
 
-    # --- Loop Principal ---
     mapeamento_gestos = config.get("mapeamento_gestos", {})
     tempo_ultimo_comando = 0
     ultimo_gesto_detectado = None
@@ -162,7 +153,6 @@ def main():
     print("\n--- Sistema iniciado. Pressione 'ESC' na janela de vídeo para sair. ---")
 
     while True:
-        # --- Processamento de Vídeo ---
         if cap and ml_classifier:
             sucesso, imagem = cap.read()
             if not sucesso:
@@ -198,12 +188,10 @@ def main():
                     command_queue.put(acao)
                     print(f"Gesto: {gesto_confirmado} -> Colocando na fila: '{acao}'")
         else:
-            # Se não houver câmera, cria uma imagem preta para a UI
             imagem = np.zeros((480, 640, 3), dtype=np.uint8)
             cv2.putText(imagem, "Video desabilitado", (150, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
 
-        # --- Processamento da Fila de Comandos (unificado para gestos e áudio) ---
         try:
             acao_pendente = command_queue.get_nowait()
             
@@ -222,13 +210,12 @@ def main():
                 cv2.putText(imagem, f"Acao: {acao_pendente}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
 
         except queue.Empty:
-            pass # Nada na fila, segue o baile
+            pass
 
         cv2.imshow("Controle de Midia por IA", imagem)
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
-    # --- Finalização ---
     print("\n--- Finalizando o sistema... ---")
     if audio_stream:
         audio_stream.stop()

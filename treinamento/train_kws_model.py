@@ -9,20 +9,17 @@ from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Reshape
 from keras.utils import to_categorical
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
-# --- Configurações ---
-INPUT_JSON_PATH = "kws-samples.json" # Arquivo exportado da UI web
+INPUT_JSON_PATH = "kws-samples.json"
 OUTPUT_MODEL_DIR = "models/kws"
 OUTPUT_MODEL_NAME = "kws_model.h5"
 OUTPUT_LABELS_NAME = "kws_labels.json"
 
-# Parâmetros de treinamento
 TEST_SIZE = 0.2
 VALIDATION_SIZE = 0.2
 BATCH_SIZE = 32
-EPOCHS = 50 # Reduzido um pouco pois o treino pode ser mais rápido
+EPOCHS = 50
 
 def load_data_from_json(json_path):
-    """Carrega os dados de espectrograma do arquivo JSON."""
     print(f"Carregando dataset de '{json_path}'...")
     with open(json_path, 'r') as f:
         data = json.load(f)
@@ -36,7 +33,6 @@ def load_data_from_json(json_path):
     label_to_int = {label: i for i, label in enumerate(labels)}
     y = np.array([label_to_int[lbl] for lbl in y_labels])
 
-    # Salva os labels para a aplicação principal usar
     int_to_label = {i: label for i, label in enumerate(labels)}
     if not os.path.exists(OUTPUT_MODEL_DIR):
         os.makedirs(OUTPUT_MODEL_DIR)

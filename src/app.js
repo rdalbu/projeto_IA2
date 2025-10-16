@@ -7,7 +7,6 @@
     video: null,
     overlay: null,
     preds: null,
-    // gesture UI
     useGesture: null,
     gestureClasses: null,
     setClassesBtn: null,
@@ -22,7 +21,6 @@
     datasetFileInput: null,
     gestureStatus: null,
     gestureCounts: null,
-    // KWS UI
     useKws: null,
     kwsClasses: null,
     setKwsClassesBtn: null,
@@ -39,7 +37,7 @@
 
   let mediaStream = null;
   let rafId = null;
-  let recognizer = null; // The single speech-commands recognizer instance
+  let recognizer = null;
 
   let poseModel = null;
 
@@ -177,7 +175,6 @@
     els.preds.className = "ok";
   }
 
-  // --- Funções de Gestos ---
   function populateGestureClassSelect() {
     if (!els.sampleLabelSelect) return;
     const currentValue = els.sampleLabelSelect.value;
@@ -256,7 +253,6 @@
     updateTrainButtonState();
   }
 
-  // --- Funções de KWS (Voz) ---
   function populateKwsClassSelect() {
     if (!els.kwsSampleLabelSelect) return;
     const currentValue = els.kwsSampleLabelSelect.value;
@@ -315,7 +311,6 @@
     kwsPreds = [];
   }
 
-  // --- Funções Principais ---
   async function startAll() {
     try {
       setStatus("Carregando modelos…", "muted");
@@ -348,7 +343,6 @@
   }
 
   function initUI() {
-    // Elementos Globais
     els.consent = document.getElementById("consent");
     els.startBtn = document.getElementById("startBtn");
     els.stopBtn = document.getElementById("stopBtn");
@@ -357,7 +351,6 @@
     els.overlay = document.getElementById("overlay");
     els.preds = document.getElementById("predictions");
 
-    // --- Eventos Globais ---
     els.consent.addEventListener("change", () => {
       els.startBtn.disabled = !els.consent.checked;
       setStatus(els.consent.checked ? "Pronto para iniciar." : "Aguardando autorização…", "muted");
@@ -365,7 +358,6 @@
     els.startBtn.addEventListener("click", startAll);
     els.stopBtn.addEventListener("click", stopAll);
 
-    // --- UI de Gestos ---
     els.useGesture = document.getElementById("useGesture");
     els.gestureClasses = document.getElementById("gestureClasses");
     els.setClassesBtn = document.getElementById("setClassesBtn");
@@ -459,7 +451,6 @@
       }
     });
 
-    // --- UI de KWS (Voz) ---
     els.useKws = document.getElementById("useKws");
     els.kwsClasses = document.getElementById("kwsClasses");
     els.setKwsClassesBtn = document.getElementById("setKwsClassesBtn");

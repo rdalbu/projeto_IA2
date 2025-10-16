@@ -36,7 +36,6 @@ class KwsClassifier:
         return mfcc
 
     def predict(self, audio_data):
-        """Faz uma predição em um trecho de áudio."""
         mfcc = self.preprocess(audio_data)
         
         # Faz a predição

@@ -19,6 +19,7 @@
     </style>
     <!-- TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js"></script>
     <!-- Teachable Machine libs -->
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
     <!-- MediaPipe Hands + utils -->
@@ -27,6 +28,7 @@
     <!-- App scripts -->
     <script defer src="src/config.js"></script>
     <script defer src="src/hand_gesture.js"></script>
+    <script defer src="src/kws_trainer.js"></script>
     <script defer src="src/app.js"></script>
   </head>
   <body>
@@ -73,6 +75,34 @@
         <div id="gestureCounts" class="muted">Sem classes.</div>
         <input type="file" id="datasetFileInput" style="display:none" accept=".json" />
         <input type="file" id="gestureFileInput" multiple style="display:none" accept=".json,.bin,.weights,.txt" />
+
+        <hr style="width:100%; margin-top: 16px; margin-bottom: 0;"/>
+
+        <h3>Coleta e Teste de Voz (KWS)</h3>
+        <div class="controls">
+          <label><input type="checkbox" id="useKws" /> Usar modelo de teste (após treinar)</label>
+        </div>
+        <div class="controls">
+          <input id="kwsClasses" type="text" placeholder="Palavras (ex: proximo,voltar,pause)" style="flex:1;" />
+          <button id="setKwsClassesBtn">Definir palavras</button>
+        </div>
+        <div class="controls">
+          <select id="kwsSampleLabelSelect" style="flex:1;"></select>
+          <button id="recordKwsSampleBtn">Gravar amostra (1s)</button>
+          <button id="clearKwsClassBtn">Limpar Palavra</button>
+        </div>
+        <div class="controls">
+          <button id="trainKwsBtn">Treinar (Teste Rápido)</button>
+        </div>
+        <div class="controls">
+          <button id="importKwsDatasetBtn">Importar Dataset</button>
+          <button id="exportKwsDatasetBtn">Exportar Dataset</button>
+          <span id="kwsStatus" class="muted"></span>
+        </div>
+
+        <div id="kwsCounts" class="muted">Sem palavras.</div>
+        <input type="file" id="kwsDatasetFileInput" style="display:none" accept=".json" />
+        <input type="file" id="kwsDatasetFileInput" style="display:none" accept=".json" />
       </div>
     </div>
   </body>

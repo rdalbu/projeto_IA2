@@ -90,7 +90,7 @@
     const xs = tf.tensor2d(state.samplesX.map(v => Array.from(v)));
     const ysIdx = tf.tensor1d(state.samplesY, 'int32');
     const ys = tf.oneHot(ysIdx, state.classes.length).toFloat();
-    xs.print ? null : null; // evita warning por não uso
+    xs.print ? null : null; 
     const model = buildModel(xs.shape[1], state.classes.length);
     const history = await model.fit(xs, ys, {
       epochs, batchSize, shuffle: true, validationSplit: 0.15,
@@ -111,17 +111,13 @@
 
   async function saveToIndexedDB(key = 'indexeddb://hand-gesture') {
     if (!state.model) throw new Error('Treine o modelo antes de salvar.');
-    // Save model to IndexedDB
     await state.model.save(key);
-    // Save labels to localStorage
     localStorage.setItem(key + '-labels', JSON.stringify(state.classes));
   }
 
   async function loadFromIndexedDB(key = 'indexeddb://hand-gesture') {
-    // Load model from IndexedDB
     state.model = await tf.loadLayersModel(key);
 
-    // Load labels from localStorage
     const labelsJson = localStorage.getItem(key + '-labels');
     if (labelsJson) {
       const labels = JSON.parse(labelsJson);
@@ -141,12 +137,9 @@
         const labels = JSON.parse(await labelsFile.text());
         setClasses(labels);
     } else {
-        // If no labels file, clear existing class state.
-        // The user will have to re-define them in the UI.
         setClasses([]); 
     }
 
-    // Load model architecture and weights
     state.model = await tf.loadLayersModel(tf.io.browserFiles(files));
     return !!state.model;
   }
@@ -154,7 +147,6 @@
   async function downloadModel(name = 'hand-gesture') {
     if (!state.model) throw new Error('Treine o modelo antes de salvar.');
 
-    // First, save the labels to a separate json file
     const labelsJson = JSON.stringify(state.classes);
     const blob = new Blob([labelsJson], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

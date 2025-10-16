@@ -1,6 +1,4 @@
-// Configurações da aplicação (ajuste conforme seu projeto)
 window.APP_CONFIG = {
-  // Caminhos padrão dos modelos exportados do Teachable Machine (TF.js)
   models: {
     pose: {
       baseURL: "./models/pose/",
@@ -9,7 +7,6 @@ window.APP_CONFIG = {
     },
   },
 
-  // MediaPipe Hands
   hands: {
     maxNumHands: 2,
     modelComplexity: 1,

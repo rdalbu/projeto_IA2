@@ -22,17 +22,33 @@
     datasetFileInput: null,
     gestureStatus: null,
     gestureCounts: null,
+    // KWS UI
+    useKws: null,
+    kwsClasses: null,
+    setKwsClassesBtn: null,
+    kwsSampleLabelSelect: null,
+    recordKwsSampleBtn: null,
+    clearKwsClassBtn: null,
+    trainKwsBtn: null,
+    importKwsDatasetBtn: null,
+    exportKwsDatasetBtn: null,
+    kwsDatasetFileInput: null,
+    kwsStatus: null,
+    kwsCounts: null,
   };
 
   let mediaStream = null;
   let rafId = null;
+  let recognizer = null; // The single speech-commands recognizer instance
 
   let poseModel = null;
 
   let hands = null;
   let lastHands = { hasHands: false, multiHandLandmarks: [], multiHandedness: [] };
+  let kwsPreds = [];
 
   let useGesture = false;
+  let useKws = false;
   let recordTimer = null;
   let recordUntil = 0;
 
@@ -66,6 +82,17 @@
     }
   }
 
+  async function initRecognizer() {
+    if (recognizer) return;
+    try {
+      recognizer = speechCommands.create('BROWSER_FFT');
+      await recognizer.ensureModelLoaded();
+    } catch (e) {
+      console.error("Falha ao iniciar reconhecedor de voz:", e);
+      recognizer = null;
+    }
+  }
+
   function onHandsResults(results) {
     const ctx = els.overlay.getContext("2d");
     ctx.clearRect(0, 0, els.overlay.width, els.overlay.height);
@@ -86,8 +113,9 @@
   }
 
   async function startMedia() {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
-    els.video.srcObject = mediaStream;
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: true });
+    const videoStream = new MediaStream(mediaStream.getVideoTracks());
+    els.video.srcObject = videoStream;
     await els.video.play();
     els.overlay.width = els.video.videoWidth || 640;
     els.overlay.height = els.video.videoHeight || 480;
@@ -128,12 +156,12 @@
       } catch {}
     }
 
-    renderPredictions({ posePreds, gesturePreds });
+    renderPredictions({ posePreds, gesturePreds, kwsPreds });
 
     rafId = requestAnimationFrame(predictFrame);
   }
 
-  function renderPredictions({ posePreds, gesturePreds }) {
+  function renderPredictions({ posePreds, gesturePreds, kwsPreds }) {
     function fmtTop(arr) {
       if (!arr?.length) return "-";
       const top = arr.slice().sort((a,b)=>b.probability-a.probability)[0];
@@ -142,13 +170,15 @@
     const lines = [];
     lines.push(`Pose (Teachable Machine): ${fmtTop(posePreds)}`);
     lines.push(`Gesto (Teste Rápido):   ${fmtTop(gesturePreds)}`);
+    lines.push(`Voz (KWS Teste):        ${fmtTop(kwsPreds)}`);
     lines.push(`Mãos (MediaPipe):       ${lastHands.hasHands ? 'detectadas' : 'não detectadas'}`);
     
     els.preds.textContent = lines.join("\n");
     els.preds.className = "ok";
   }
 
-  function populateClassSelect() {
+  // --- Funções de Gestos ---
+  function populateGestureClassSelect() {
     if (!els.sampleLabelSelect) return;
     const currentValue = els.sampleLabelSelect.value;
     const items = window.HandGesture.getCounts();
@@ -164,11 +194,11 @@
     }
   }
 
-  function renderCounts() {
+  function renderGestureCounts() {
     const items = window.HandGesture.getCounts();
     if (!items.length) { els.gestureCounts.textContent = 'Sem classes.'; return; }
     els.gestureCounts.textContent = items.map(it => `${it.label}: ${it.count}`).join(' | ');
-    populateClassSelect();
+    populateGestureClassSelect();
     updateTrainButtonState();
   }
 
@@ -188,7 +218,7 @@
       const feat = window.HandGesture.landmarksToFeatures([ lastHands.multiHandLandmarks[0] ], handedness, { includeZ: false, mirrorX: true });
       if (!feat) { els.gestureStatus.textContent = 'Falha ao extrair landmarks.'; return false; }
       window.HandGesture.addSample(label, feat);
-      renderCounts();
+      renderGestureCounts();
       return true;
     } catch (e) {
       els.gestureStatus.textContent = `Erro: ${e.message}`;
@@ -226,12 +256,73 @@
     updateTrainButtonState();
   }
 
+  // --- Funções de KWS (Voz) ---
+  function populateKwsClassSelect() {
+    if (!els.kwsSampleLabelSelect) return;
+    const currentValue = els.kwsSampleLabelSelect.value;
+    const items = window.KwsTrainer.getCounts();
+    els.kwsSampleLabelSelect.innerHTML = '';
+    for (const it of items) {
+      const opt = document.createElement('option');
+      opt.value = it.label;
+      opt.textContent = `${it.label} (${it.count})`;
+      els.kwsSampleLabelSelect.appendChild(opt);
+    }
+    if (currentValue) {
+      els.kwsSampleLabelSelect.value = currentValue;
+    }
+  }
+
+  function renderKwsCounts() {
+    const items = window.KwsTrainer.getCounts();
+    if (!items.length) { els.kwsCounts.textContent = 'Sem palavras.'; return; }
+    els.kwsCounts.textContent = items.map(it => `${it.label}: ${it.count}`).join(' | ');
+    populateKwsClassSelect();
+    updateKwsTrainButtonState();
+  }
+
+  function updateKwsTrainButtonState() {
+    if (!els.trainKwsBtn) return;
+    const items = window.KwsTrainer.getCounts();
+    const nonZero = items.filter(it => (it.count || 0) > 0);
+    const ok = items.length >= 2 && nonZero.length >= 2;
+    els.trainKwsBtn.disabled = !ok;
+  }
+
+  async function startKwsTestListening() {
+    if (!recognizer || recognizer.isListening()) return;
+    els.kwsStatus.textContent = 'Ouvindo para teste…';
+    try {
+      await recognizer.listen(async (result) => {
+        if (result.spectrogram) {
+          const preds = await window.KwsTrainer.predictProbs(result.spectrogram.data);
+          if (preds) kwsPreds = preds;
+        }
+      }, { includeSpectrogram: true, probabilityThreshold: 0.75, overlapFactor: 0.5 });
+    } catch (e) {
+      console.error("Erro ao iniciar a escuta de teste KWS:", e);
+    }
+  }
+
+  async function stopKwsTestListening() {
+    if (recognizer && recognizer.isListening()) {
+      try {
+        await recognizer.stopListening();
+      } catch (e) {
+        console.warn("Erro ao parar escuta de teste KWS:", e);
+      }
+    }
+    kwsPreds = [];
+  }
+
+  // --- Funções Principais ---
   async function startAll() {
     try {
       setStatus("Carregando modelos…", "muted");
       await Promise.all([
         loadTMPose(),
         initHands(),
+        initRecognizer(),
       ]);
       setStatus("Inicializando mídia…", "muted");
       await startMedia();
@@ -249,6 +340,7 @@
   async function stopAll() {
     cancelAnimationFrame(rafId);
     rafId = null;
+    await stopKwsTestListening();
     stopMedia();
     setStatus("Parado.", "muted");
     els.startBtn.disabled = !els.consent.checked;
@@ -256,6 +348,7 @@
   }
 
   function initUI() {
+    // Elementos Globais
     els.consent = document.getElementById("consent");
     els.startBtn = document.getElementById("startBtn");
     els.stopBtn = document.getElementById("stopBtn");
@@ -264,7 +357,15 @@
     els.overlay = document.getElementById("overlay");
     els.preds = document.getElementById("predictions");
 
-    // gesture UI
+    // --- Eventos Globais ---
+    els.consent.addEventListener("change", () => {
+      els.startBtn.disabled = !els.consent.checked;
+      setStatus(els.consent.checked ? "Pronto para iniciar." : "Aguardando autorização…", "muted");
+    });
+    els.startBtn.addEventListener("click", startAll);
+    els.stopBtn.addEventListener("click", stopAll);
+
+    // --- UI de Gestos ---
     els.useGesture = document.getElementById("useGesture");
     els.gestureClasses = document.getElementById("gestureClasses");
     els.setClassesBtn = document.getElementById("setClassesBtn");
@@ -280,16 +381,7 @@
     els.gestureStatus = document.getElementById("gestureStatus");
     els.gestureCounts = document.getElementById("gestureCounts");
 
-    els.consent.addEventListener("change", () => {
-      els.startBtn.disabled = !els.consent.checked;
-      setStatus(els.consent.checked ? "Pronto para iniciar." : "Aguardando autorização…", "muted");
-    });
-    els.startBtn.addEventListener("click", startAll);
-    els.stopBtn.addEventListener("click", stopAll);
-
-    els.useGesture.addEventListener('change', () => {
-      useGesture = !!els.useGesture.checked;
-    });
+    els.useGesture.addEventListener('change', () => { useGesture = !!els.useGesture.checked; });
 
     els.setClassesBtn.addEventListener('click', () => {
       const raw = (els.gestureClasses.value || '').trim();
@@ -298,7 +390,7 @@
       try {
         window.HandGesture.setClasses(labels);
         els.gestureStatus.textContent = `Classes definidas: ${labels.join(', ')}`;
-        renderCounts();
+        renderGestureCounts();
       } catch (e) {
         els.gestureStatus.textContent = `Erro: ${e.message}`;
       }
@@ -316,7 +408,7 @@
       if (confirm(`Tem certeza que deseja apagar todas as amostras da classe "${label}"?`)) {
         try {
           window.HandGesture.clearSamplesForClass(label);
-          renderCounts();
+          renderGestureCounts();
           els.gestureStatus.textContent = `Amostras da classe "${label}" foram apagadas.`;
         } catch (e) {
           els.gestureStatus.textContent = `Erro ao limpar: ${e.message}`;
@@ -359,7 +451,7 @@
         if (!file) return;
         const dataset = JSON.parse(await file.text());
         window.HandGesture.loadDataset(dataset);
-        renderCounts();
+        renderGestureCounts();
         els.gestureStatus.textContent = `Dataset '${file.name}' carregado.`;
         ev.target.value = '';
       } catch (e) {
@@ -367,15 +459,115 @@
       }
     });
 
-    function renderCounts() {
-      const items = window.HandGesture.getCounts();
-      if (!items.length) { els.gestureCounts.textContent = 'Sem classes.'; return; }
-      els.gestureCounts.textContent = items.map(it => `${it.label}: ${it.count}`).join(' | ');
-      populateClassSelect();
-      updateTrainButtonState();
-    }
+    // --- UI de KWS (Voz) ---
+    els.useKws = document.getElementById("useKws");
+    els.kwsClasses = document.getElementById("kwsClasses");
+    els.setKwsClassesBtn = document.getElementById("setKwsClassesBtn");
+    els.kwsSampleLabelSelect = document.getElementById("kwsSampleLabelSelect");
+    els.recordKwsSampleBtn = document.getElementById("recordKwsSampleBtn");
+    els.clearKwsClassBtn = document.getElementById("clearKwsClassBtn");
+    els.trainKwsBtn = document.getElementById("trainKwsBtn");
+    els.kwsStatus = document.getElementById("kwsStatus");
+    els.kwsCounts = document.getElementById("kwsCounts");
+    els.importKwsDatasetBtn = document.getElementById("importKwsDatasetBtn");
+    els.exportKwsDatasetBtn = document.getElementById("exportKwsDatasetBtn");
+    els.kwsDatasetFileInput = document.getElementById("kwsDatasetFileInput");
 
-    updateTrainButtonState();
+    els.useKws.addEventListener('change', async (ev) => {
+      useKws = !!ev.target.checked;
+      if (useKws) {
+        await startKwsTestListening();
+      } else {
+        await stopKwsTestListening();
+      }
+    });
+
+    els.setKwsClassesBtn.addEventListener('click', () => {
+      const raw = (els.kwsClasses.value || '').trim();
+      if (!raw) return;
+      const labels = raw.split(',').map(s => s.trim()).filter(Boolean);
+      try {
+        window.KwsTrainer.setClasses(labels);
+        els.kwsStatus.textContent = `Palavras definidas: ${labels.join(', ')}`;
+        renderKwsCounts();
+      } catch (e) {
+        els.kwsStatus.textContent = `Erro: ${e.message}`;
+      }
+    });
+
+    els.recordKwsSampleBtn.addEventListener('click', async () => {
+      const label = (els.kwsSampleLabelSelect?.value || '').trim();
+      if (!label) { els.kwsStatus.textContent = 'Selecione uma palavra para gravar.'; return; }
+      if (!recognizer) { els.kwsStatus.textContent = 'Inicie a captura primeiro.'; return; }
+      if (recognizer.isListening()) { els.kwsStatus.textContent = 'Aguarde, reconhecedor ocupado.'; return; }
+
+      els.recordKwsSampleBtn.disabled = true;
+      els.kwsStatus.textContent = `Gravando "${label}" por 1s...`;
+
+      try {
+        await recognizer.listen(result => {
+          recognizer.stopListening();
+          window.KwsTrainer.addSample(label, result.spectrogram.data);
+          renderKwsCounts();
+          els.kwsStatus.textContent = `Amostra para "${label}" gravada.`;
+          els.recordKwsSampleBtn.disabled = false;
+        }, { includeSpectrogram: true, overlapFactor: 0 });
+      } catch (e) {
+        els.kwsStatus.textContent = `Erro ao gravar: ${e.message}`;
+        els.recordKwsSampleBtn.disabled = false;
+      }
+    });
+
+    els.clearKwsClassBtn.addEventListener('click', () => {
+      const label = (els.kwsSampleLabelSelect?.value || '').trim();
+      if (!label) { els.kwsStatus.textContent = 'Selecione uma palavra para limpar.'; return; }
+      if (confirm(`Tem certeza que deseja apagar todas as amostras da palavra "${label}"?`)) {
+        window.KwsTrainer.clearSamplesForClass(label);
+        renderKwsCounts();
+        els.kwsStatus.textContent = `Amostras da palavra "${label}" foram apagadas.`;
+      }
+    });
+
+    els.trainKwsBtn.addEventListener('click', async () => {
+      if (!recognizer) { els.kwsStatus.textContent = 'Inicie a captura primeiro.'; return; }
+      try {
+        els.kwsStatus.textContent = 'Treinando modelo de voz…';
+        const inputShape = [recognizer.params().numFrames, recognizer.params().numFeatureBins];
+        const hist = await window.KwsTrainer.train(inputShape, 30, 16);
+        const acc = (hist?.history?.val_acc?.slice(-1)[0] ?? hist?.history?.acc?.slice(-1)[0] ?? 0) * 100;
+        els.kwsStatus.textContent = `Treino concluído. acc≈${acc.toFixed(1)}%`;
+      } catch (e) {
+        els.kwsStatus.textContent = `Erro no treino: ${e.message}`;
+        console.error(e);
+      }
+    });
+
+    els.exportKwsDatasetBtn.addEventListener('click', () => {
+      try {
+        window.KwsTrainer.downloadDataset();
+        els.kwsStatus.textContent = 'Dataset de amostras exportado.';
+      } catch (e) {
+        els.kwsStatus.textContent = `Erro ao exportar: ${e.message}`;
+      }
+    });
+
+    els.importKwsDatasetBtn.addEventListener('click', () => els.kwsDatasetFileInput.click());
+    els.kwsDatasetFileInput.addEventListener('change', async (ev) => {
+      try {
+        const file = ev.target.files[0];
+        if (!file) return;
+        const dataset = JSON.parse(await file.text());
+        window.KwsTrainer.loadDataset(dataset);
+        renderKwsCounts();
+        els.kwsStatus.textContent = `Dataset '${file.name}' carregado.`;
+        ev.target.value = '';
+      } catch (e) {
+        els.kwsStatus.textContent = `Erro ao importar: ${e.message}`;
+      }
+    });
+
+    renderGestureCounts();
+    renderKwsCounts();
   }
 
   window.addEventListener("DOMContentLoaded", initUI);

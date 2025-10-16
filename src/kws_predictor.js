@@ -19,10 +19,8 @@ window.KwsPredictor = (() => {
     try {
       recognizer = speechCommands.create('BROWSER_FFT', null, options.modelURL, options.metadataURL);
 
-      // Garante que o modelo e os metadados sejam carregados
       await recognizer.ensureModelLoaded();
 
-      // Obtém as palavras do vocabulário do modelo carregado
       labels = recognizer.wordLabels();
       console.log(`Preditor KWS inicializado. Labels: ${labels.join(', ')}`);
 
@@ -39,7 +37,6 @@ window.KwsPredictor = (() => {
     if (isRunning) return;
 
     try {
-      // Inicia a escuta do microfone. O callback será chamado com os resultados.
       await recognizer.listen(result => {
         const scores = Array.from(result.scores);
         const preds = scores.map((score, i) => ({

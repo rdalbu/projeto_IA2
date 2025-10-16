@@ -36,8 +36,6 @@ window.KwsTrainer = (() => {
     if (!kwsData.classes.includes(label)) {
       throw new Error(`Classe '${label}' não definida.`);
     }
-    // A spectrogram from speech-commands is a Float32Array.
-    // We need to convert it to a plain array to be stored and cloned.
     kwsData.samples.push({ label, spectrogram: Array.from(spectrogram) });
   }
 
@@ -70,10 +68,8 @@ window.KwsTrainer = (() => {
       throw new Error('Amostras insuficientes para treinar.');
     }
 
-    // Create and compile the model
     buildModel(inputShape, kwsData.classes.length);
 
-    // Prepare data tensors
     const xs = tf.tensor(kwsData.samples.map(s => s.spectrogram));
     const ys = tf.oneHot(kwsData.samples.map(s => kwsData.classes.indexOf(s.label)), kwsData.classes.length);
 

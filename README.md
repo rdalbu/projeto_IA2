@@ -93,32 +93,53 @@ Com o setup concluído, siga os passos abaixo para usar o controle de gestos.
 ---
 
 
-## AVANÇADO: Treinando Seus Próprios Gestos
+## AVANÇADO: Treinando Seus Próprios Gestos e Voz
 
-Se quiser adicionar novos gestos ou melhorar a precisão, siga estas fases.
+Se quiser adicionar novos comandos ou melhorar a precisão, o fluxo agora é unificado e dividido em duas fases principais: uma no navegador para testes rápidos e outra no terminal para gerar o modelo final.
 
-### Fase 1: Coleta de Dados
+### Fase 1: Coleta de Dados e Teste Rápido (no Navegador)
 
-1.  **Inicie o Servidor Web:** No terminal (na pasta raiz do projeto), execute:
-    ```sh
-    python -m http.server
-    ```
-2.  **Acesse a Interface:** Abra seu navegador e vá para `http://localhost:8000`.
-3.  **Grave as Amostras:** Na página, defina os nomes dos seus gestos e use os controles para gravar dezenas de amostras para cada um.
-4.  **Exporte e Salve:** Ao final, clique em **"Exportar Dataset"**. Salve o arquivo `gesture-dataset.json` na **pasta raiz** do projeto.
+Nesta fase, você usa a interface web para coletar amostras e treinar um modelo temporário que funciona apenas no navegador, ideal para ter um feedback imediato.
 
-### Fase 2: Treinamento do Modelo
+1.  **Inicie a Interface Web:**
+    - Abra um terminal na pasta raiz do projeto.
+    - Inicie um servidor local com o comando: `python -m http.server`.
+    - Abra seu navegador e acesse o endereço: `http://localhost:8000`.
 
-1.  Com o `gesture-dataset.json` na pasta raiz, execute o script de treinamento:
-    ```sh
-    python treinamento\train_model.py
-    ```
-2.  Este script usará seu dataset para gerar um novo modelo de IA em `models/meu_modelo/hand-gesture.h5`.
+2.  **Na página, você verá duas seções:** "Coleta e Teste de Gestos" e "Coleta e Teste de Voz (KWS)". O processo é o mesmo para ambas:
+    - **Defina as Classes:** Digite os nomes dos seus gestos ou palavras-chave, separados por vírgula (ex: `subir,descer,neutro`).
+    - **Grave as Amostras:** Selecione a classe/palavra no menu e grave várias amostras (recomenda-se 20 ou mais para cada uma).
+    - **Treine o Modelo de Teste:** Clique em **"Treinar (Teste Rápido)"**. Isso treinará um modelo temporário no seu navegador.
+    - **Teste em Tempo Real:** Marque a caixa **"Usar modelo de teste (após treinar)"** e faça os gestos ou fale as palavras. A área de "Predições" mostrará o resultado em tempo real.
+
+3.  **Exporte os Dados para o Treino Final:**
+    - Quando estiver satisfeito com a quantidade de amostras, use os botões **"Exportar Dataset"** em cada seção.
+    - Salve os arquivos `gesture-dataset.json` (para gestos) e `kws-samples.json` (para voz) na **pasta raiz** do projeto.
+
+### Fase 2: Treinamento do Modelo Final (no Terminal)
+
+Depois de exportar os datasets, você usará os scripts Python para criar os modelos `.h5` que a aplicação principal realmente utiliza.
+
+1.  **Treine o Modelo de Gestos:**
+    - Certifique-se de que o `gesture-dataset.json` está na raiz do projeto.
+    - No terminal (com o ambiente virtual ativo), execute:
+      ```sh
+      python treinamento\train_model.py
+      ```
+
+2.  **Treine o Modelo de Voz (KWS):**
+    - Certifique-se de que o `kws-samples.json` está na raiz do projeto.
+    - No terminal, execute:
+      ```sh
+      python treinamento\train_kws_model.py
+      ```
+
+Ambos os scripts salvarão os modelos finais na pasta `models/`.
 
 ### Fase 3: Atualizar a Configuração
 
-1.  Abra o `config.json`.
-2.  Atualize a lista `"gesto_labels"` para que contenha os nomes exatos dos seus novos gestos, na mesma ordem em que foram gravados.
-3.  Adicione o mapeamento dos novos gestos em `"mapeamento_gestos"`.
+1.  Abra o arquivo `config.json`.
+2.  Atualize as listas `"gesto_labels"` e `"kws_labels"` para que contenham os nomes exatos dos seus novos gestos/palavras, na mesma ordem em que foram gravados.
+3.  Atualize os mapeamentos `"mapeamento_gestos"` e `"mapeamento_kws"` para associar cada classe a um comando (ex: `"playpause"`, `"nexttrack"`).
 
-Após esses passos, ao executar o programa principal novamente, ele estará usando seu novo modelo treinado.
+Após esses passos, ao executar o programa principal (`python -m src.detector_gestos.main`), ele estará usando seus novos modelos treinados.

@@ -1,0 +1,31 @@
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE configs
+.idea/
+.vscode/
+
+# Training artifacts (KWS and audio)
+kws_data/
+models/kws/
+models/meu_modelo_audio/
+
+# Logs and temp
+*.log
+*.tmp
+tmp/
+
+# Node
+node_modules/
+

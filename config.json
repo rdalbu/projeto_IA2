@@ -15,5 +15,16 @@
     "pinça": "playpause",
     "passar": "nexttrack",
     "retroceder": "prevtrack"
+  },
+  "usar_kws": true,
+  "kws_modelo_path": "models/kws/kws_model.h5",
+  "kws_labels_path": "models/kws/kws_labels.json",
+  "kws_confianca_minima": 0.9,
+  "audio_input_device_index": null,
+  "mapeamento_kws": {
+    "pause": "playpause",
+    "play": "playpause",
+    "proximo": "nexttrack",
+    "voltar": "prevtrack"
   }
 }

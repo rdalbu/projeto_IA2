@@ -70,8 +70,6 @@ window.KwsCollector = (() => {
     kwsData = dataset;
   }
 
-  // --- Funções de Gravação ---
-
   async function startRecording(onSampleReady) {
     if (!audioContext) {
       audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: kwsData.config.sampleRate });
@@ -80,14 +78,12 @@ window.KwsCollector = (() => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaStreamSource = audioContext.createMediaStreamSource(stream);
     
-    // Grava por 1 segundo
     const recorder = new MediaRecorder(stream);
     const chunks = [];
     recorder.ondataavailable = e => chunks.push(e.data);
     recorder.onstop = () => {
       const blob = new Blob(chunks, { type: 'audio/wav' });
       onSampleReady(blob);
-      // Para a stream para desligar o ícone de microfone
       stream.getTracks().forEach(track => track.stop());
     };
 

@@ -2,12 +2,12 @@
 window.KwsTrainer = (() => {
   let kwsData = { classes: [], samples: [] };
   let model = null;
-  let recognizer = null; // speech-commands recognizer
+  let recognizer = null;
 
   const SPECTROGRAM_CONFIG = {
     fftSize: 1024,
-    sampleRate: 44100, // speech-commands works with 44100
-    hopLength: 441, // ~10ms
+    sampleRate: 44100,
+    hopLength: 441,
     nMelFrames: 40,
     fmin: 0,
     fmax: 8000,

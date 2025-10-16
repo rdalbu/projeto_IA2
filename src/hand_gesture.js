@@ -1,10 +1,9 @@
-// Treino e inferência de gestos de mão usando landmarks do MediaPipe Hands (TFJS no navegador)
 (function () {
   const state = {
-    classes: [], // ex.: ["ok", "paz", "like"]
+    classes: [],
     label2idx: new Map(),
-    samplesX: [], // Array<Float32Array>
-    samplesY: [], // Array<number>
+    samplesX: [],
+    samplesY: [],
     counts: new Map(),
     model: null,
   };
@@ -243,9 +242,9 @@
     loadFromIndexedDB,
     loadFromBrowserFiles,
     downloadModel,
-    loadFromUrl, // new function
-    downloadDataset, // new function
-    loadDataset, // new function
-    clearSamplesForClass, // new function
+    loadFromUrl, 
+    downloadDataset, 
+    loadDataset, 
+    clearSamplesForClass, 
   };
 })();

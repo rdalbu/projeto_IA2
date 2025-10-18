@@ -18,6 +18,51 @@ def load_config(path):
         print(f"Erro: Falha ao decodificar '{os.path.basename(path)}'. Usando configurações padrão.")
         return {}
 
+
+def validate_config(user_config):
+    default_config = {
+        "indice_camera": 1,
+        "confianca_deteccao": 0.8,
+        "confianca_rastreamento": 0.8,
+        "sensibilidade_deslize_pixels": 70,
+        "pinch_threshold_pixels": 30,
+        "frames_confirmacao_gesto": 5,
+        "intervalo_entre_comandos_segundos": 1.0,
+        "mapeamento_gestos": {
+            "Deslizar Direita": "nexttrack",
+            "Deslizar Esquerda": "prevtrack",
+            "Pinca": "playpause"
+        }
+    }
+    
+    config = default_config
+    config.update(user_config)
+
+    if not isinstance(config["indice_camera"], int) or config["indice_camera"] < 0:
+        print(f"Aviso: 'indice_camera' inválido ({config['indice_camera']}). Usando padrão: {default_config['indice_camera']}.")
+        config["indice_camera"] = default_config["indice_camera"]
+
+    if not isinstance(config["confianca_deteccao"], float) or not (0.0 <= config["confianca_deteccao"] <= 1.0):
+        print(f"Aviso: 'confianca_deteccao' inválida. Usando padrão: {default_config['confianca_deteccao']}.")
+        config["confianca_deteccao"] = default_config["confianca_deteccao"]
+
+    return config
+
+def processa_gesto(gesto_atual, ultimo_gesto, contador_frames, frames_para_confirmar):
+    if gesto_atual and ("Deslizar" in gesto_atual or gesto_atual == "Pinca"):
+        return gesto_atual, gesto_atual, 1
+
+    if gesto_atual == ultimo_gesto and gesto_atual is not None:
+        contador_frames += 1
+    else:
+        contador_frames = 1
+    
+    gesto_confirmado = None
+    if contador_frames >= frames_para_confirmar:
+        gesto_confirmado = gesto_atual
+
+    return gesto_confirmado, gesto_atual, contador_frames
+
 def main():
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
     config = load_config(config_path)

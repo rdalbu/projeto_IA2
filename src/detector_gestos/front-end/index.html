@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Painel IA – Câmera e Música</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- Painel da câmera -->
+      <div class="camera-card" id="cameraCard">
+        <div class="camera-header">
+          <h2>Câmera Ativa</h2>
+          <div class="camera-status">
+            <div id="statusDot" class="status-dot status-off"></div>
+            <span id="camLabel">Desativada</span>
+          </div>
+        </div>
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <div id="fallback" class="camera-fallback">Câmera indisponível</div>
+      </div>
+
+      <!-- Player de música -->
+      <div class="player-card">
+        <div class="player-info">
+          <img
+            id="albumCover"
+            src="https://i.imgur.com/3OQ4Pz9.png"
+            alt="Capa do álbum"
+          />
+          <div>
+            <h3 id="songTitle">Synthwave Dreams</h3>
+            <p id="songArtist">DJ Neon Flow</p>
+          </div>
+        </div>
+        <audio id="musicPlayer" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" preload="auto"></audio>
+        <div class="player-controls">
+          <button id="playPauseBtn" class="btn">▶️</button>
+          <input id="seekBar" type="range" min="0" max="100" value="0" />
+          <span id="timeLabel">00:00</span>
+        </div>
+      </div>
+
+      <!-- Botão liga/desliga -->
+      <div class="switch-wrapper">
+        <div
+          id="toggleSwitch"
+          class="switch"
+          role="switch"
+          aria-checked="false"
+          tabindex="0"
+        >
+          <div class="knob"></div>
+          <div class="label">
+            <strong id="switchState">DESATIVADO</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="conect.js"></script>
+  </body>
+</html>

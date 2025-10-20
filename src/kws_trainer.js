@@ -53,7 +53,7 @@ window.KwsTrainer = (() => {
     model.add(tf.layers.dropout({ rate: 0.25 }));
     model.add(tf.layers.dense({ units: 64, activation: 'relu' }));
     model.add(tf.layers.dropout({ rate: 0.5 }));
-    model.add(tf.layers.dense({ units: num_classes, activation: 'softmax' }));
+    model.add(tf.layers.dense({ units: numClasses, activation: 'softmax' }));
 
     model.compile({
       optimizer: tf.train.adam(),

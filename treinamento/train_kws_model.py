@@ -7,7 +7,7 @@ import shutil
 from sklearn.model_selection import train_test_split
 import keras
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Reshape
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Reshape, GlobalAveragePooling2D
 from keras.utils import to_categorical
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 import librosa
@@ -15,8 +15,6 @@ import soundfile as sf
 import subprocess
 import tempfile
 
-# Aceita tanto o formato com espectrogramas prontos (samples[].spectrogram)
-# quanto o formato com áudio em base64 (samples[].audioBase64).
 INPUT_JSON_PATH = "kws-samples.json"
 OUTPUT_MODEL_DIR = "models/kws"
 OUTPUT_MODEL_NAME = "kws_model.h5"
@@ -44,15 +42,14 @@ def _ffmpeg_webm_to_wav_bytes(webm_bytes: bytes, sr: int = 16000) -> bytes | Non
             cmd = [
                 "ffmpeg", "-y", "-loglevel", "error",
                 "-i", in_path,
-                "-ac", "1",  # mono
-                "-ar", str(sr),  # sample rate
+                "-ac", "1", 
+                "-ar", str(sr),  
                 out_path,
             ]
             subprocess.run(cmd, check=True)
             with open(out_path, "rb") as f:
                 return f.read()
         finally:
-            # limpeza silenciosa
             try:
                 os.remove(in_path)
             except Exception:
@@ -62,7 +59,6 @@ def _ffmpeg_webm_to_wav_bytes(webm_bytes: bytes, sr: int = 16000) -> bytes | Non
             except Exception:
                 pass
     except FileNotFoundError:
-        # Silencioso aqui; a checagem principal ocorre antes do loop
         return None
     except Exception as e:
         print("Aviso: falha na convers\u00e3o WebM via ffmpeg:", e)
@@ -70,37 +66,30 @@ def _ffmpeg_webm_to_wav_bytes(webm_bytes: bytes, sr: int = 16000) -> bytes | Non
 
 
 def _decode_wav_base64_to_mfcc(audio_b64: str, sr: int = 16000, duration: float = 1.0, n_mfcc: int = 13):
-    # audio_b64 pode vir no formato data:audio/wav;base64,<payload>
     try:
         audio_b64 = (audio_b64 or "").strip()
         if "," in audio_b64:
             audio_b64 = audio_b64.split(",", 1)[1]
         wav_or_webm_bytes = base64.b64decode(audio_b64)
-        # Detecta WebM/Matroska (EBML) por cabeçalho 0x1A45DFA3 (base64 típico inicia com GkXf...)
         if len(wav_or_webm_bytes) >= 4 and wav_or_webm_bytes[:4] == b"\x1A\x45\xDF\xA3":
-            # Converter via ffmpeg
             wav_bytes = _ffmpeg_webm_to_wav_bytes(wav_or_webm_bytes, sr=sr)
             if not wav_bytes:
                 return None
         else:
             wav_bytes = wav_or_webm_bytes
 
-        # 1) Tenta com soundfile (mais robusto para BytesIO)
         try:
             y, sr0 = sf.read(io.BytesIO(wav_bytes), dtype='float32', always_2d=False)
             if y is None:
                 return None
-            # Se estéreo, converte para mono
             if isinstance(y, np.ndarray) and y.ndim == 2:
                 if y.shape[0] == 2:
                     y = y.mean(axis=0)
                 else:
                     y = y.mean(axis=1)
         except Exception:
-            # 2) Fallback: audioread/librosa.load
             y, sr0 = librosa.load(io.BytesIO(wav_bytes), sr=None, mono=True)
 
-        # Resample para sr desejada
         if sr0 != sr:
             y = librosa.resample(y, orig_sr=sr0, target_sr=sr)
 
@@ -171,6 +160,14 @@ def load_data_from_json(json_path):
             X_list.append(spec)
             y_labels.append(s['label'])
             decoded += 1
+        # Uniformiza largura temporal (W) para a primeira amostra, se possível
+        if X_list and getattr(X_list[0], 'ndim', 0) == 2:
+            target_w = int(X_list[0].shape[1])
+            X_list = [x[:, :target_w] if x.shape[1] >= target_w else np.pad(x, ((0,0),(0, target_w - x.shape[1])), mode='constant') for x in X_list]
+        # Normaliza a largura (tempo) para a da primeira amostra, se possível
+        if X_list and getattr(X_list[0], 'ndim', 0) == 2:
+            target_w = int(X_list[0].shape[1])
+            X_list = [x[:, :target_w] if x.shape[1] >= target_w else np.pad(x, ((0,0),(0, target_w - x.shape[1])), mode='constant') for x in X_list]
     elif uses_audio_b64:
         # Converte áudio base64 -> MFCC 13xT com parâmetros compatíveis ao runtime
         for idx, s in enumerate(samples):
@@ -190,7 +187,7 @@ def load_data_from_json(json_path):
     else:
         raise ValueError("Formato de samples não reconhecido: esperava 'spectrogram' ou 'audioBase64'.")
 
-    X = np.stack(X_list, axis=0)
+    X = np.stack(X_list, axis=0).astype(np.float32)
     print(f"Shape X: {X.shape}")
     print(f"Amostras decodificadas: {decoded}/{total}")
 
@@ -209,8 +206,13 @@ def load_data_from_json(json_path):
     return X, y, labels
 
 def build_model(input_shape, num_classes):
+    # Normaliza input_shape: (H, W)
+    if len(input_shape) != 2:
+        raise ValueError(f"input_shape inválido para KWS: {input_shape}. Esperado (H, W).")
+    h, w = int(input_shape[0]), int(input_shape[1])
     model = Sequential([
-        Reshape(input_shape + (1,), input_shape=input_shape),
+        keras.layers.Input(shape=(h, w)),
+        Reshape((h, w, 1)),
         
         Conv2D(8, (2, 2), activation='relu'),
         MaxPooling2D((2, 2), strides=(2, 2)),
@@ -218,7 +220,7 @@ def build_model(input_shape, num_classes):
         Conv2D(16, (2, 2), activation='relu'),
         MaxPooling2D((2, 2), strides=(2, 2)),
 
-        Flatten(),
+        GlobalAveragePooling2D(),
         Dropout(0.25),
         Dense(64, activation='relu'),
         Dropout(0.5),

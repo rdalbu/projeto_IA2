@@ -94,8 +94,6 @@ video {
 /* ==== SWITCH ==== */
 .switch-wrapper {
   position: fixed;
-  bottom: 32px;
-  right: 32px;
 }
 
 .switch {
@@ -198,4 +196,12 @@ video {
   flex: 1;
   height: 6px;
   accent-color: var(--accent);
+}
+
+.switch-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+  text-align: center;
 }

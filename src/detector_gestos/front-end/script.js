@@ -81,3 +81,42 @@ musicPlayer.addEventListener("timeupdate", () => {
 seekBar.addEventListener("input", () => {
   musicPlayer.currentTime = (seekBar.value / 100) * musicPlayer.duration;
 });
+
+// === MICROFONE ===
+const micToggle = document.getElementById("micToggleSwitch");
+const micSwitchState = document.getElementById("micSwitchState");
+
+let micStream = null;
+
+async function startMic() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: false,
+    });
+    micSwitchState.textContent = "ATIVADO";
+    micToggle.setAttribute("aria-checked", "true");
+  } catch (err) {
+    console.error("Erro ao acessar microfone:", err);
+    micSwitchState.textContent = "Indisponível";
+    micToggle.setAttribute("aria-checked", "false");
+  }
+}
+
+function stopMic() {
+  if (micStream) {
+    micStream.getTracks().forEach((track) => track.stop());
+    micStream = null;
+  }
+  micSwitchState.textContent = "DESATIVADO";
+  micToggle.setAttribute("aria-checked", "false");
+}
+
+micToggle.addEventListener("click", () => {
+  const isOn = micToggle.getAttribute("aria-checked") === "true";
+  if (isOn) {
+    stopMic();
+  } else {
+    startMic();
+  }
+});

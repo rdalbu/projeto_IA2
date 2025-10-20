@@ -87,24 +87,16 @@ def main():
 
     kws_classifier = None
     audio_stream = None
-    usar_kws = bool(config.get("usar_kws"))
-    if usar_kws:
+    if config.get("usar_kws"):
         try:
-            model_path = config.get("kws_modelo_path")
-            labels_path = config.get("kws_labels_path")
-            if not model_path or not os.path.exists(model_path):
-                raise FileNotFoundError(f"Modelo KWS não encontrado em '{model_path}'.")
-            if not labels_path or not os.path.exists(labels_path):
-                raise FileNotFoundError(f"Arquivo de labels KWS não encontrado em '{labels_path}'.")
-
             kws_classifier = KwsClassifier(
-                model_path=model_path,
-                labels_path=labels_path
+                model_path=config.get("kws_modelo_path"),
+                labels_path=config.get("kws_labels_path")
             )
-
+            
             audio_thread = threading.Thread(
-                target=process_audio_thread,
-                args=(kws_classifier, config),
+                target=process_audio_thread, 
+                args=(kws_classifier, config), 
                 daemon=True
             )
             audio_thread.start()
@@ -119,11 +111,9 @@ def main():
             print("Classificador de palavras-chave (KWS) carregado e stream de áudio iniciado.")
 
         except Exception as e:
-            print("Aviso: KWS desabilitado.")
-            print("Motivo:", e)
-            print("- Verifique os caminhos 'kws_modelo_path' e 'kws_labels_path' no config.json")
-            print("- Ou rode o treino: python treinamento\\train_kws_model.py")
-            usar_kws = False
+            print(f"ERRO CRÍTICO ao inicializar o KWS: {e}")
+            if ser: ser.close()
+            return
 
     cap = None
     detector = None

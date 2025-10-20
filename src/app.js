@@ -26,7 +26,6 @@
     setKwsClassesBtn: null,
     kwsSampleLabelSelect: null,
     recordKwsSampleBtn: null,
-    kwsRecordDuration: null,
     clearKwsClassBtn: null,
     trainKwsBtn: null,
     importKwsDatasetBtn: null,
@@ -456,7 +455,6 @@
     els.kwsClasses = document.getElementById("kwsClasses");
     els.setKwsClassesBtn = document.getElementById("setKwsClassesBtn");
     els.kwsSampleLabelSelect = document.getElementById("kwsSampleLabelSelect");
-    els.kwsRecordDuration = document.getElementById("kwsRecordDuration");
     els.recordKwsSampleBtn = document.getElementById("recordKwsSampleBtn");
     els.clearKwsClassBtn = document.getElementById("clearKwsClassBtn");
     els.trainKwsBtn = document.getElementById("trainKwsBtn");
@@ -494,33 +492,21 @@
       if (!recognizer) { els.kwsStatus.textContent = 'Inicie a captura primeiro.'; return; }
       if (recognizer.isListening()) { els.kwsStatus.textContent = 'Aguarde, reconhecedor ocupado.'; return; }
 
-      const secs = Math.max(1, Math.min(60, parseInt(els.kwsRecordDuration?.value || '1', 10)));
-      let added = 0;
-      let stopped = false;
-
       els.recordKwsSampleBtn.disabled = true;
       els.kwsStatus.textContent = `Gravando "${label}" por 1s...`;
-      // sobrescreve mensagem com duração escolhida
-      els.kwsStatus.textContent = `Gravando "${label}" por ${secs}s...`;
 
       try {
         await recognizer.listen(result => {
-          // recognizer.stopListening(); // adiado para o timer externo
+          recognizer.stopListening();
           window.KwsTrainer.addSample(label, result.spectrogram.data);
-          // renderKwsCounts(); // adiado para o término da gravação
+          renderKwsCounts();
           els.kwsStatus.textContent = `Amostra para "${label}" gravada.`;
-          // els.recordKwsSampleBtn.disabled = false;
+          els.recordKwsSampleBtn.disabled = false;
         }, { includeSpectrogram: true, overlapFactor: 0 });
       } catch (e) {
         els.kwsStatus.textContent = `Erro ao gravar: ${e.message}`;
         els.recordKwsSampleBtn.disabled = false;
       }
-      setTimeout(async () => {
-        try { await recognizer.stopListening(); } catch {}
-        renderKwsCounts();
-        els.kwsStatus.textContent = `Gravação concluída. Amostras adicionadas: ${added}.`;
-        els.recordKwsSampleBtn.disabled = false;
-      }, secs * 1000);
     });
 
     els.clearKwsClassBtn.addEventListener('click', () => {

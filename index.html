@@ -84,9 +84,7 @@
         </div>
         <div class="controls">
           <select id="kwsSampleLabelSelect" style="flex:1;"></select>
-          <input type="number" id="kwsRecordDuration" value="1" min="1" max="60" style="width: 50px;" title="Duração da gravação (segundos)">
-          <span class="muted" style="margin-right: 5px;">s</span>
-          <button id="recordKwsSampleBtn">Gravar</button>
+          <button id="recordKwsSampleBtn">Gravar amostra (1s)</button>
           <button id="clearKwsClassBtn">Limpar Palavra</button>
         </div>
         <div class="controls">
@@ -99,6 +97,7 @@
         </div>
 
         <div id="kwsCounts" class="muted">Sem palavras.</div>
+        <input type="file" id="kwsDatasetFileInput" style="display:none" accept=".json" />
         <input type="file" id="kwsDatasetFileInput" style="display:none" accept=".json" />
       </div>
     </div>

@@ -20,6 +20,8 @@ Thumbs.db
 kws_data/
 models/kws/
 models/meu_modelo_audio/
+kws-samples.json
+kws-samples-spectrogram.json
 
 # Logs and temp
 *.log

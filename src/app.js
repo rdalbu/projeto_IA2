@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   const els = {
     consent: null,
     startBtn: null,
@@ -69,7 +69,7 @@
   async function initHands() {
     try {
       const HandsCtor = window.Hands || window.hands || null;
-      if (!HandsCtor) throw new Error('Construtor Hands não encontrado no escopo global.');
+      if (!HandsCtor) throw new Error('Construtor Hands nÃ£o encontrado no escopo global.');
       hands = new HandsCtor({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
       });
@@ -168,9 +168,9 @@
     }
     const lines = [];
     lines.push(`Pose (Teachable Machine): ${fmtTop(posePreds)}`);
-    lines.push(`Gesto (Teste Rápido):   ${fmtTop(gesturePreds)}`);
+    lines.push(`Gesto (Teste RÃ¡pido):   ${fmtTop(gesturePreds)}`);
     lines.push(`Voz (KWS Teste):        ${fmtTop(kwsPreds)}`);
-    lines.push(`Mãos (MediaPipe):       ${lastHands.hasHands ? 'detectadas' : 'não detectadas'}`);
+    lines.push(`MÃ£os (MediaPipe):       ${lastHands.hasHands ? 'detectadas' : 'nÃ£o detectadas'}`);
     
     els.preds.textContent = lines.join("\n");
     els.preds.className = "ok";
@@ -210,7 +210,7 @@
 
   function addCurrentSampleTo(label) {
     if (!label) { els.gestureStatus.textContent = 'Selecione uma classe.'; return false; }
-    if (!lastHands.hasHands || !lastHands.multiHandLandmarks.length) { els.gestureStatus.textContent = 'Nenhuma mão detectada.'; return false; }
+    if (!lastHands.hasHands || !lastHands.multiHandLandmarks.length) { els.gestureStatus.textContent = 'Nenhuma mÃ£o detectada.'; return false; }
     try {
       const handedness = (lastHands.multiHandedness && lastHands.multiHandedness[0]?.label) || 'Right';
       const feat = window.HandGesture.landmarksToFeatures([ lastHands.multiHandLandmarks[0] ], handedness, { includeZ: false, mirrorX: true });
@@ -250,7 +250,7 @@
     if (recordTimer) clearTimeout(recordTimer);
     recordTimer = null;
     els.recordBtn.textContent = 'Gravar';
-    els.gestureStatus.textContent = 'Gravação concluída.';
+    els.gestureStatus.textContent = 'GravaÃ§Ã£o concluÃ­da.';
     updateTrainButtonState();
   }
 
@@ -288,11 +288,11 @@
 
   async function startKwsTestListening() {
     if (!recognizer || recognizer.isListening()) return;
-    els.kwsStatus.textContent = 'Ouvindo para teste…';
+    els.kwsStatus.textContent = 'Ouvindo para teste.';
     try {
       await recognizer.listen(async (result) => {
         if (result.spectrogram) {
-          const preds = await window.KwsTrainer.predictProbs(result.spectrogram.data);
+          const spec = result.spectrogram; const frameSize = Number(spec.frameSize) || (recognizer.params && recognizer.params().numFeatureBins) || null; const total = (spec.data && spec.data.length) || 0; const frames = frameSize ? Math.max(1, Math.floor(total / frameSize)) : null; const feed = (frameSize && frames) ? { data: spec.data, shape: [frameSize, frames] } : spec.data; const preds = await window.KwsTrainer.predictProbs(feed);
           if (preds) kwsPreds = preds;
         }
       }, { includeSpectrogram: true, probabilityThreshold: 0.75, overlapFactor: 0.5 });
@@ -314,13 +314,13 @@
 
   async function startAll() {
     try {
-      setStatus("Carregando modelos…", "muted");
+      setStatus("Carregando modelosâ€¦", "muted");
       await Promise.all([
         loadTMPose(),
         initHands(),
         initRecognizer(),
       ]);
-      setStatus("Inicializando mídia…", "muted");
+      setStatus("Inicializando mÃ­diaâ€¦", "muted");
       await startMedia();
       setStatus("Rodando", "ok");
       els.startBtn.disabled = true;
@@ -328,7 +328,7 @@
       rafId = requestAnimationFrame(predictFrame);
     } catch (e) {
       console.error(e);
-      setStatus("Erro ao iniciar. Verifique permissões/modelos.", "err");
+      setStatus("Erro ao iniciar. Verifique permissÃµes/modelos.", "err");
       await stopAll();
     }
   }
@@ -354,7 +354,7 @@
 
     els.consent.addEventListener("change", () => {
       els.startBtn.disabled = !els.consent.checked;
-      setStatus(els.consent.checked ? "Pronto para iniciar." : "Aguardando autorização…", "muted");
+      setStatus(els.consent.checked ? "Pronto para iniciar." : "Aguardando autorizaÃ§Ã£oâ€¦", "muted");
     });
     els.startBtn.addEventListener("click", startAll);
     els.stopBtn.addEventListener("click", stopAll);
@@ -419,10 +419,10 @@
 
     els.trainGestureBtn.addEventListener('click', async () => {
       try {
-        els.gestureStatus.textContent = 'Treinando…';
+        els.gestureStatus.textContent = 'Treinandoâ€¦';
         const hist = await window.HandGesture.train(30, 32);
         const acc = (hist?.val_accuracy?.slice(-1)[0] ?? hist?.accuracy?.slice(-1)[0] ?? 0) * 100;
-        els.gestureStatus.textContent = `Treino concluído. acc≈${acc.toFixed(1)}%`;
+        els.gestureStatus.textContent = `Treino concluÃ­do. accâ‰ˆ${acc.toFixed(1)}%`;
       } catch (e) {
         els.gestureStatus.textContent = `Erro no treino: ${e.message}`;
       }
@@ -500,14 +500,14 @@
 
       els.recordKwsSampleBtn.disabled = true;
       els.kwsStatus.textContent = `Gravando "${label}" por 1s...`;
-      // sobrescreve mensagem com duração escolhida
+      // sobrescreve mensagem com duraÃ§Ã£o escolhida
       els.kwsStatus.textContent = `Gravando "${label}" por ${secs}s...`;
 
       try {
         await recognizer.listen(result => {
           // recognizer.stopListening(); // adiado para o timer externo
           window.KwsTrainer.addSample(label, result.spectrogram.data);
-          // renderKwsCounts(); // adiado para o término da gravação
+          // renderKwsCounts(); // adiado para o tÃ©rmino da gravaÃ§Ã£o
           els.kwsStatus.textContent = `Amostra para "${label}" gravada.`;
           // els.recordKwsSampleBtn.disabled = false;
         }, { includeSpectrogram: true, overlapFactor: 0 });
@@ -518,7 +518,7 @@
       setTimeout(async () => {
         try { await recognizer.stopListening(); } catch {}
         renderKwsCounts();
-        els.kwsStatus.textContent = `Gravação concluída. Amostras adicionadas: ${added}.`;
+        els.kwsStatus.textContent = `GravaÃ§Ã£o concluÃ­da. Amostras adicionadas: ${added}.`;
         els.recordKwsSampleBtn.disabled = false;
       }, secs * 1000);
     });
@@ -536,11 +536,11 @@
     els.trainKwsBtn.addEventListener('click', async () => {
       if (!recognizer) { els.kwsStatus.textContent = 'Inicie a captura primeiro.'; return; }
       try {
-        els.kwsStatus.textContent = 'Treinando modelo de voz…';
-        const inputShape = [recognizer.params().numFrames, recognizer.params().numFeatureBins];
+        els.kwsStatus.textContent = 'Treinando modelo de voz.';
+        let frames, bins; try { const p = recognizer.params && recognizer.params(); frames = p && p.numFrames; bins = p && p.numFeatureBins; } catch {} const inputShape = (Number.isFinite(frames) && Number.isFinite(bins)) ? [frames, bins] : undefined;
         const hist = await window.KwsTrainer.train(inputShape, 30, 16);
         const acc = (hist?.history?.val_acc?.slice(-1)[0] ?? hist?.history?.acc?.slice(-1)[0] ?? 0) * 100;
-        els.kwsStatus.textContent = `Treino concluído. acc≈${acc.toFixed(1)}%`;
+        els.kwsStatus.textContent = `Treino concluÃ­do. accâ‰ˆ${acc.toFixed(1)}%`;
       } catch (e) {
         els.kwsStatus.textContent = `Erro no treino: ${e.message}`;
         console.error(e);
@@ -577,3 +577,6 @@
 
   window.addEventListener("DOMContentLoaded", initUI);
 })();
+
+
+

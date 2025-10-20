@@ -1,0 +1,249 @@
+:root {
+  --bg: #0b1120;
+  --accent: #22c55e;
+  --muted: #94a3b8;
+  --glass: rgba(255, 255, 255, 0.05);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: "Inter", system-ui, sans-serif;
+  background: linear-gradient(180deg, #050d1a 0%, #08111f 100%);
+  color: #f1f5f9;
+}
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 32px;
+}
+
+/* ==== CAMERA ==== */
+.camera-card {
+  top: 10px;
+  width: 80%;
+  max-width: 960px;
+  aspect-ratio: 16/9;
+  background: var(--glass);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  overflow: hidden;
+  backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.camera-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.camera-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.camera-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-on {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+.status-off {
+  background: #475569;
+}
+
+video, #cameraStream {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.9);
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+/* ==== SWITCH ==== */
+.switch-wrapper {
+  position: fixed;
+}
+
+.switch {
+  width: 140px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.switch[aria-checked="true"] {
+  background: linear-gradient(90deg, #064e3b, #15803d);
+}
+
+.knob {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+}
+
+.switch[aria-checked="true"] .knob {
+  transform: translateX(70px);
+}
+
+.label {
+  font-size: 0.8rem;
+  color: #d1fae5;
+  margin-right: 8px;
+}
+
+/* ==== PLAYER ==== */
+.player-card {
+  width: 80%;
+  max-width: 960px;
+  background: var(--glass);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.player-info img {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.player-info h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.player-info p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+}
+
+#seekBar {
+  flex: 1;
+  height: 6px;
+  accent-color: var(--accent);
+}
+
+.switch-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+/* ==== IA STATUS (WS/Runner) ==== */
+.ia-status {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  background: rgba(0,0,0,0.45);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: #e2e8f0;
+  z-index: 20;
+}
+.ia-line { display: flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot-ok { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+.dot-off { background: #64748b; }
+
+/* ==== LOG ==== */
+.log-card {
+  width: 80%;
+  max-width: 960px;
+  background: var(--glass);
+  border-radius: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.log-card h3 {
+  margin: 0 0 8px 0;
+}
+
+.log-list {
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}

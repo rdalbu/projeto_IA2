@@ -7,6 +7,9 @@
   "usar_serial": true,
   "serial_port": "COM5",
   "serial_baudrate": 115200,
+  "camera_width": 640,
+  "camera_height": 480,
+  "camera_fps": 30,
   "usar_modelo_gesto": true,
   "gesto_modelo_path": "models/meu_modelo/hand-gesture.h5",
   "gesto_labels": ["pinça", "passar", "retroceder", "neutro"],
@@ -26,5 +29,7 @@
     "play": "playpause",
     "proximo": "nexttrack",
     "voltar": "prevtrack"
-  }
+  },
+  "preview_max_fps": 20,
+  "jpeg_quality": 60
 }

@@ -1,9 +1,9 @@
 window.APP_CONFIG = {
   models: {
     pose: {
-      baseURL: "./models/pose/",
-      modelURL: "./models/pose/model.json",
-      metadataURL: "./models/pose/metadata.json",
+      baseURL: './models/pose/',
+      modelURL: './models/pose/model.json',
+      metadataURL: './models/pose/metadata.json',
     },
   },
 

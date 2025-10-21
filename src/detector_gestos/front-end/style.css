@@ -9,7 +9,7 @@ html,
 body {
   height: 100%;
   margin: 0;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   background: linear-gradient(180deg, #050d1a 0%, #08111f 100%);
   color: #f1f5f9;
 }
@@ -110,7 +110,7 @@ video {
   transition: background 0.3s ease;
 }
 
-.switch[aria-checked="true"] {
+.switch[aria-checked='true'] {
   background: linear-gradient(90deg, #064e3b, #15803d);
 }
 
@@ -122,7 +122,7 @@ video {
   transition: transform 0.25s ease;
 }
 
-.switch[aria-checked="true"] .knob {
+.switch[aria-checked='true'] .knob {
   transform: translateX(70px);
 }
 

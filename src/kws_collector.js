@@ -1,4 +1,3 @@
-
 window.KwsCollector = (() => {
   let kwsData = {
     classes: [],
@@ -14,23 +13,23 @@ window.KwsCollector = (() => {
   let processor = null;
 
   function setClasses(labels) {
-    if (!Array.isArray(labels) || labels.some(l => typeof l !== 'string')) {
+    if (!Array.isArray(labels) || labels.some((l) => typeof l !== 'string')) {
       throw new Error('Labels devem ser um array de strings.');
     }
     kwsData.classes = labels;
-    kwsData.samples = kwsData.samples.filter(s => kwsData.classes.includes(s.label));
+    kwsData.samples = kwsData.samples.filter((s) => kwsData.classes.includes(s.label));
   }
 
   function getCounts() {
-    const counts = kwsData.classes.map(label => ({
+    const counts = kwsData.classes.map((label) => ({
       label,
-      count: kwsData.samples.filter(s => s.label === label).length,
+      count: kwsData.samples.filter((s) => s.label === label).length,
     }));
     return counts;
   }
 
   function clearSamplesForClass(label) {
-    kwsData.samples = kwsData.samples.filter(s => s.label !== label);
+    kwsData.samples = kwsData.samples.filter((s) => s.label !== label);
   }
 
   function addSample(label, audioBlob) {
@@ -48,7 +47,7 @@ window.KwsCollector = (() => {
 
   function downloadDataset() {
     if (kwsData.samples.length === 0) {
-      alert("Nenhuma amostra de áudio foi gravada ainda.");
+      alert('Nenhuma amostra de áudio foi gravada ainda.');
       return;
     }
     const jsonStr = JSON.stringify(kwsData, null, 2);
@@ -72,19 +71,21 @@ window.KwsCollector = (() => {
 
   async function startRecording(onSampleReady) {
     if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: kwsData.config.sampleRate });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: kwsData.config.sampleRate,
+      });
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaStreamSource = audioContext.createMediaStreamSource(stream);
-    
+
     const recorder = new MediaRecorder(stream);
     const chunks = [];
-    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.ondataavailable = (e) => chunks.push(e.data);
     recorder.onstop = () => {
       const blob = new Blob(chunks, { type: 'audio/wav' });
       onSampleReady(blob);
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
     };
 
     recorder.start();

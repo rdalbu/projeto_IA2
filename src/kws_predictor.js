@@ -1,4 +1,3 @@
-
 window.KwsPredictor = (() => {
   let recognizer = null;
   let isRunning = false;
@@ -17,46 +16,53 @@ window.KwsPredictor = (() => {
     onPrediction = options.onPrediction;
 
     try {
-      recognizer = speechCommands.create('BROWSER_FFT', null, options.modelURL, options.metadataURL);
+      recognizer = speechCommands.create(
+        'BROWSER_FFT',
+        null,
+        options.modelURL,
+        options.metadataURL
+      );
 
       await recognizer.ensureModelLoaded();
 
       labels = recognizer.wordLabels();
       console.log(`Preditor KWS inicializado. Labels: ${labels.join(', ')}`);
-
     } catch (e) {
-      console.error("Erro ao inicializar o preditor KWS:", e);
+      console.error('Erro ao inicializar o preditor KWS:', e);
       throw e;
     }
   }
 
   async function start() {
     if (!recognizer) {
-      throw new Error("Preditor KWS não inicializado. Chame init() primeiro.");
+      throw new Error('Preditor KWS não inicializado. Chame init() primeiro.');
     }
     if (isRunning) return;
 
     try {
-      await recognizer.listen(result => {
-        const scores = Array.from(result.scores);
-        const preds = scores.map((score, i) => ({
-          className: labels[i],
-          probability: score,
-        }));
+      await recognizer.listen(
+        (result) => {
+          const scores = Array.from(result.scores);
+          const preds = scores.map((score, i) => ({
+            className: labels[i],
+            probability: score,
+          }));
 
-        if (onPrediction) {
-          onPrediction(preds);
+          if (onPrediction) {
+            onPrediction(preds);
+          }
+        },
+        {
+          includeSpectrogram: false,
+          probabilityThreshold: 0.7,
+          invokeCallbackOnNoiseAndUnknown: true,
+          overlapFactor: 0.5,
         }
-      }, {
-        includeSpectrogram: false,
-        probabilityThreshold: 0.7,
-        invokeCallbackOnNoiseAndUnknown: true,
-        overlapFactor: 0.5
-      });
+      );
       isRunning = true;
-      console.log("Escuta de KWS iniciada.");
+      console.log('Escuta de KWS iniciada.');
     } catch (e) {
-      console.error("Erro ao iniciar a escuta de KWS:", e);
+      console.error('Erro ao iniciar a escuta de KWS:', e);
     }
   }
 
@@ -65,9 +71,9 @@ window.KwsPredictor = (() => {
       try {
         await recognizer.stopListening();
         isRunning = false;
-        console.log("Escuta de KWS parada.");
+        console.log('Escuta de KWS parada.');
       } catch (e) {
-        console.warn("Erro ao parar a escuta de KWS (pode já ter parado):", e);
+        console.warn('Erro ao parar a escuta de KWS (pode já ter parado):', e);
         isRunning = false;
       }
     }

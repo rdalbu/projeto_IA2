@@ -1,4 +1,3 @@
-
 window.KwsTrainer = (() => {
   let kwsData = { classes: [], samples: [] };
   let model = null;
@@ -29,7 +28,11 @@ window.KwsTrainer = (() => {
     }
   }
 
-  async function decodeAudioBase64ToPCM(audioBase64, targetSampleRate = 16000, durationSeconds = 1.0) {
+  async function decodeAudioBase64ToPCM(
+    audioBase64,
+    targetSampleRate = 16000,
+    durationSeconds = 1.0
+  ) {
     try {
       const arr = await dataUrlToArrayBuffer(audioBase64);
       if (!arr) return null;
@@ -79,7 +82,7 @@ window.KwsTrainer = (() => {
 
   async function computeLogSpectrogram2D(pcm, opts = {}) {
     const sr = Number(opts.sampleRate) || 16000;
-    const targetBins = Number(opts.targetBins) || (SPECTROGRAM_CONFIG?.nMelFrames || 40);
+    const targetBins = Number(opts.targetBins) || SPECTROGRAM_CONFIG?.nMelFrames || 40;
     const targetFrames = Number(opts.targetFrames) || 100;
     const frameLength = Number(opts.frameLength) || 512; // ~32ms @16k
     let hopLength;
@@ -99,7 +102,9 @@ window.KwsTrainer = (() => {
       const logm = tf.log1p(mags); // log(1+magnitude)
 
       const transposed = logm.transpose([1, 0]); // [bins, frames]
-      const resized = tf.image.resizeBilinear(transposed.expandDims(-1), [targetBins, transposed.shape[1]], true).squeeze(-1);
+      const resized = tf.image
+        .resizeBilinear(transposed.expandDims(-1), [targetBins, transposed.shape[1]], true)
+        .squeeze(-1);
 
       const min = resized.min();
       const max = resized.max();
@@ -109,7 +114,6 @@ window.KwsTrainer = (() => {
   }
 
   async function convertAudioBase64SamplesInPlace(statusEl) {
-
     let bins = SPECTROGRAM_CONFIG?.nMelFrames || 40;
     let frames = 100;
     try {
@@ -120,14 +124,25 @@ window.KwsTrainer = (() => {
     } catch {}
 
     const total = kwsData.samples.length;
-    let done = 0, kept = 0, failed = 0;
+    let done = 0,
+      kept = 0,
+      failed = 0;
     for (const s of kwsData.samples) {
       done++;
       try {
-        if (!s || !s.audioBase64) { continue; }
+        if (!s || !s.audioBase64) {
+          continue;
+        }
         const pcm = await decodeAudioBase64ToPCM(s.audioBase64, 16000, 1.0);
-        if (!pcm) { failed++; continue; }
-        const spec2d = await computeLogSpectrogram2D(pcm, { sampleRate: 16000, targetBins: bins, targetFrames: frames });
+        if (!pcm) {
+          failed++;
+          continue;
+        }
+        const spec2d = await computeLogSpectrogram2D(pcm, {
+          sampleRate: 16000,
+          targetBins: bins,
+          targetFrames: frames,
+        });
         if (Array.isArray(spec2d) && spec2d.length) {
           s.spectrogram = spec2d; // 2D
           delete s.audioBase64;
@@ -139,29 +154,30 @@ window.KwsTrainer = (() => {
         failed++;
       }
       try {
-        if (statusEl) statusEl.textContent = `Convertendo áudio: ${done}/${total} (ok:${kept}, falhas:${failed})`;
+        if (statusEl)
+          statusEl.textContent = `Convertendo áudio: ${done}/${total} (ok:${kept}, falhas:${failed})`;
       } catch {}
     }
     return { kept, failed, total };
   }
 
   function setClasses(labels) {
-    if (!Array.isArray(labels) || labels.some(l => typeof l !== 'string')) {
+    if (!Array.isArray(labels) || labels.some((l) => typeof l !== 'string')) {
       throw new Error('Labels devem ser um array de strings.');
     }
     kwsData.classes = labels;
-    kwsData.samples = kwsData.samples.filter(s => kwsData.classes.includes(s.label));
+    kwsData.samples = kwsData.samples.filter((s) => kwsData.classes.includes(s.label));
   }
 
   function getCounts() {
-    return kwsData.classes.map(label => ({
+    return kwsData.classes.map((label) => ({
       label,
-      count: kwsData.samples.filter(s => s.label === label).length,
+      count: kwsData.samples.filter((s) => s.label === label).length,
     }));
   }
 
   function clearSamplesForClass(label) {
-    kwsData.samples = kwsData.samples.filter(s => s.label !== label);
+    kwsData.samples = kwsData.samples.filter((s) => s.label !== label);
   }
 
   function addSample(label, spectrogram) {
@@ -172,11 +188,10 @@ window.KwsTrainer = (() => {
   }
 
   function buildModel(inputShape, numClasses) {
-
     if (!Array.isArray(inputShape) || inputShape.length !== 2) {
       throw new Error(`inputShape inválido: ${JSON.stringify(inputShape)}`);
     }
-    const [H, W] = inputShape.map(x => Number(x));
+    const [H, W] = inputShape.map((x) => Number(x));
     if (!Number.isFinite(H) || !Number.isFinite(W)) {
       throw new Error(`inputShape com dimensões não numéricas: ${JSON.stringify(inputShape)}`);
     }
@@ -184,10 +199,14 @@ window.KwsTrainer = (() => {
     model = tf.sequential();
     model.add(tf.layers.reshape({ inputShape, targetShape: [H, W, 1] }));
 
-    model.add(tf.layers.conv2d({ filters: 8, kernelSize: [2, 2], activation: 'relu', padding: 'same' }));
+    model.add(
+      tf.layers.conv2d({ filters: 8, kernelSize: [2, 2], activation: 'relu', padding: 'same' })
+    );
     model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] }));
 
-    model.add(tf.layers.conv2d({ filters: 16, kernelSize: [2, 2], activation: 'relu', padding: 'same' }));
+    model.add(
+      tf.layers.conv2d({ filters: 16, kernelSize: [2, 2], activation: 'relu', padding: 'same' })
+    );
     model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] }));
 
     model.add(tf.layers.globalAveragePooling2d({}));
@@ -196,43 +215,58 @@ window.KwsTrainer = (() => {
     model.add(tf.layers.dropout({ rate: 0.5 }));
     model.add(tf.layers.dense({ units: numClasses, activation: 'softmax' }));
 
-    model.compile({ optimizer: tf.train.adam(), loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+    model.compile({
+      optimizer: tf.train.adam(),
+      loss: 'categoricalCrossentropy',
+      metrics: ['accuracy'],
+    });
     return model;
   }
 
   function toSpectrogram2D(spec) {
-
     let val = spec;
     try {
       if (typeof val === 'string') {
-
         val = JSON.parse(val);
       }
     } catch {}
 
-    if (val && typeof val === 'object' && (Array.isArray(val.data) || ArrayBuffer.isView(val.data)) && Array.isArray(val.shape) && val.shape.length === 2) {
-      const H = Number(val.shape[0])|0, W = Number(val.shape[1])|0;
+    if (
+      val &&
+      typeof val === 'object' &&
+      (Array.isArray(val.data) || ArrayBuffer.isView(val.data)) &&
+      Array.isArray(val.shape) &&
+      val.shape.length === 2
+    ) {
+      const H = Number(val.shape[0]) | 0,
+        W = Number(val.shape[1]) | 0;
       const data = ArrayBuffer.isView(val.data) ? Array.from(val.data) : val.data;
-      if (H > 0 && W > 0 && Array.isArray(data) && data.length >= H*W) {
+      if (H > 0 && W > 0 && Array.isArray(data) && data.length >= H * W) {
         const out = new Array(H);
-        for (let i=0;i<H;i++) {
-          out[i] = data.slice(i*W, (i+1)*W).map(v => Number(v) || 0);
+        for (let i = 0; i < H; i++) {
+          out[i] = data.slice(i * W, (i + 1) * W).map((v) => Number(v) || 0);
         }
         return out;
       }
     }
 
-    if (val && typeof val === 'object' && (Array.isArray(val.data) || ArrayBuffer.isView(val.data)) && Number.isFinite(Number(val.frameSize))) {
+    if (
+      val &&
+      typeof val === 'object' &&
+      (Array.isArray(val.data) || ArrayBuffer.isView(val.data)) &&
+      Number.isFinite(Number(val.frameSize))
+    ) {
       const frameSize = Number(val.frameSize) | 0;
       const data = ArrayBuffer.isView(val.data) ? Array.from(val.data) : val.data;
       if (frameSize > 0 && data && data.length >= frameSize) {
         const frames = Math.max(1, Math.floor(data.length / frameSize));
-        const H = frameSize, W = frames;
+        const H = frameSize,
+          W = frames;
         const out = new Array(H);
-        for (let i=0;i<H;i++) {
+        for (let i = 0; i < H; i++) {
           const row = new Array(W);
-          for (let j=0;j<W; j++) {
-            row[j] = Number(data[j*frameSize + i]) || 0; // interleave to (H,W)
+          for (let j = 0; j < W; j++) {
+            row[j] = Number(data[j * frameSize + i]) || 0; // interleave to (H,W)
           }
           out[i] = row;
         }
@@ -242,22 +276,31 @@ window.KwsTrainer = (() => {
 
     if (Array.isArray(val) && Array.isArray(val[0])) return val;
 
-    if (!(Array.isArray(val) || ArrayBuffer.isView(val))) throw new Error('Espectrograma inválido: não é array.');
+    if (!(Array.isArray(val) || ArrayBuffer.isView(val)))
+      throw new Error('Espectrograma inválido: não é array.');
     const flat = ArrayBuffer.isView(val) ? Array.from(val) : val;
     const L = flat.length >>> 0;
     const candH = [SPECTROGRAM_CONFIG?.nMelFrames || 40, 40, 13];
-    let H = null, W = null;
+    let H = null,
+      W = null;
     for (const h of candH) {
-      if (h > 0 && L % h === 0) { H = h; W = L / h; break; }
+      if (h > 0 && L % h === 0) {
+        H = h;
+        W = L / h;
+        break;
+      }
     }
-    if (!H) { H = candH[0]; W = Math.max(1, Math.floor(L / H)); }
+    if (!H) {
+      H = candH[0];
+      W = Math.max(1, Math.floor(L / H));
+    }
     const out = new Array(H);
     for (let i = 0; i < H; i++) {
       const start = i * W;
       const row = flat.slice(start, start + W);
 
       while (row.length < W) row.push(0);
-      out[i] = row.map(v => Number(v) || 0);
+      out[i] = row.map((v) => Number(v) || 0);
     }
     return out;
   }
@@ -272,7 +315,7 @@ window.KwsTrainer = (() => {
         if (!s || !('spectrogram' in s)) continue;
         const A2 = toSpectrogram2D(s.spectrogram);
         const H = A2.length;
-        const W = (Array.isArray(A2[0]) ? A2[0].length : 0);
+        const W = Array.isArray(A2[0]) ? A2[0].length : 0;
         if (H && W) return [H, W];
       } catch {}
     }
@@ -280,11 +323,10 @@ window.KwsTrainer = (() => {
   }
 
   function padOrCrop2D(arr, H, W) {
-
     const base = toSpectrogram2D(arr);
     const out = new Array(H);
     for (let i = 0; i < H; i++) {
-      const row = (base[i] || []);
+      const row = base[i] || [];
       const newRow = new Array(W);
       for (let j = 0; j < W; j++) {
         newRow[j] = Number.isFinite(row[j]) ? row[j] : 0;
@@ -299,12 +341,14 @@ window.KwsTrainer = (() => {
       throw new Error('Amostras insuficientes para treinar.');
     }
 
-
     if (!('spectrogram' in (kwsData.samples[0] || {}))) {
       const hasAudioB64 = 'audioBase64' in (kwsData.samples[0] || {});
       if (hasAudioB64) {
         let el = null;
-        try { el = document.getElementById('kwsStatus'); if (el) el.textContent = 'Convertendo audioBase64 para espectrogramas…'; } catch {}
+        try {
+          el = document.getElementById('kwsStatus');
+          if (el) el.textContent = 'Convertendo audioBase64 para espectrogramas…';
+        } catch {}
         const { kept, failed, total } = await convertAudioBase64SamplesInPlace(el);
         if (!('spectrogram' in (kwsData.samples[0] || {}))) {
           const msgFail = `Falha ao converter dataset (ok:${kept}, falhas:${failed} de ${total}).`;
@@ -312,12 +356,16 @@ window.KwsTrainer = (() => {
           throw new Error(msgFail);
         }
       } else {
-        const msg = 'Dataset KWS inválido para o navegador. Esperado samples[].spectrogram (matriz 2D).';
-        try { const el = document.getElementById('kwsStatus'); if (el) el.textContent = msg; } catch {}
+        const msg =
+          'Dataset KWS inválido para o navegador. Esperado samples[].spectrogram (matriz 2D).';
+        try {
+          const el = document.getElementById('kwsStatus');
+          if (el) el.textContent = msg;
+        } catch {}
         throw new Error(msg);
       }
     }
-    let shape = (Array.isArray(inputShape) && inputShape.length === 2) ? inputShape : null;
+    let shape = Array.isArray(inputShape) && inputShape.length === 2 ? inputShape : null;
     if (!shape) {
       shape = inferInputShapeFromSamples();
     } else {
@@ -333,12 +381,11 @@ window.KwsTrainer = (() => {
       if (typeof document !== 'undefined') {
         const el = document.getElementById('kwsStatus');
         if (el) {
-
-          const counts = kwsData.classes.map(label => ({
+          const counts = kwsData.classes.map((label) => ({
             label,
-            count: kwsData.samples.filter(s => s.label === label).length,
+            count: kwsData.samples.filter((s) => s.label === label).length,
           }));
-          const cstr = counts.map(c => `${c.label}:${c.count}`).join(' | ');
+          const cstr = counts.map((c) => `${c.label}:${c.count}`).join(' | ');
           el.textContent = `KWS: inputShape=[${shape[0]}, ${shape[1]}] | ${cstr}`;
         }
       }
@@ -348,10 +395,14 @@ window.KwsTrainer = (() => {
     const [H, W] = shape;
     const data2d = [];
     const lbls = [];
-    let kept = 0, dropped = 0;
+    let kept = 0,
+      dropped = 0;
     for (const s of kwsData.samples) {
       try {
-        if (!s || !('spectrogram' in s)) { dropped++; continue; }
+        if (!s || !('spectrogram' in s)) {
+          dropped++;
+          continue;
+        }
         const m = padOrCrop2D(s.spectrogram, H, W);
         data2d.push(m);
         lbls.push(kwsData.classes.indexOf(s.label));
@@ -361,7 +412,9 @@ window.KwsTrainer = (() => {
       }
     }
     if (kept < 2) {
-      throw new Error(`Amostras válidas insuficientes após normalização. Mantidas=${kept}, Descartadas=${dropped}.`);
+      throw new Error(
+        `Amostras válidas insuficientes após normalização. Mantidas=${kept}, Descartadas=${dropped}.`
+      );
     }
 
     buildModel(shape, kwsData.classes.length);
@@ -382,7 +435,10 @@ window.KwsTrainer = (() => {
       epochs,
       batchSize,
       validationSplit: 0.2,
-      callbacks: { onEpochEnd: (epoch, logs) => console.log(`Epoch ${epoch}: loss = ${logs.loss}, acc = ${logs.acc}`) },
+      callbacks: {
+        onEpochEnd: (epoch, logs) =>
+          console.log(`Epoch ${epoch}: loss = ${logs.loss}, acc = ${logs.acc}`),
+      },
     });
 
     xs.dispose();
@@ -408,7 +464,6 @@ window.KwsTrainer = (() => {
       prediction.dispose();
       return Array.from(probabilities);
     } catch (e) {
-
       return null;
     }
   }
@@ -420,17 +475,17 @@ window.KwsTrainer = (() => {
   }
 
   async function getRecognizer() {
-      if (recognizer && recognizer.isListening()) return recognizer;
-      if (recognizer) await recognizer.stopListening();
+    if (recognizer && recognizer.isListening()) return recognizer;
+    if (recognizer) await recognizer.stopListening();
 
-      recognizer = speechCommands.create('BROWSER_FFT');
-      await recognizer.ensureModelLoaded();
-      return recognizer;
+    recognizer = speechCommands.create('BROWSER_FFT');
+    await recognizer.ensureModelLoaded();
+    return recognizer;
   }
 
   function downloadDataset() {
     if (kwsData.samples.length === 0) {
-      alert("Nenhuma amostra de voz foi gravada ainda.");
+      alert('Nenhuma amostra de voz foi gravada ainda.');
       return;
     }
     const jsonStr = JSON.stringify(kwsData, null, 2);

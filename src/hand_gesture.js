@@ -21,26 +21,26 @@
   }
 
   function getCounts() {
-    return state.classes.map(l => ({ label: l, count: state.counts.get(l) || 0 }));
+    return state.classes.map((l) => ({ label: l, count: state.counts.get(l) || 0 }));
   }
 
-
-
-
-
-  function landmarksToFeatures(landmarks, handedness = 'Right', { includeZ = false, mirrorX = true } = {}) {
+  function landmarksToFeatures(
+    landmarks,
+    handedness = 'Right',
+    { includeZ = false, mirrorX = true } = {}
+  ) {
     if (!Array.isArray(landmarks) || landmarks.length === 0) return null;
     const lm = landmarks[0];
     if (!lm || lm.length < 21) return null;
 
     const wrist = lm[0];
-    const pts = lm.map(p => ({ x: p.x, y: p.y, z: p.z ?? 0 }));
+    const pts = lm.map((p) => ({ x: p.x, y: p.y, z: p.z ?? 0 }));
 
-    const flip = (mirrorX && String(handedness).toLowerCase().startsWith('left')) ? -1 : 1;
+    const flip = mirrorX && String(handedness).toLowerCase().startsWith('left') ? -1 : 1;
     for (const p of pts) {
       p.x = (p.x - wrist.x) * flip;
-      p.y = (p.y - wrist.y);
-      p.z = (p.z - wrist.z);
+      p.y = p.y - wrist.y;
+      p.z = p.z - wrist.z;
     }
 
     let maxRange = 1e-6;
@@ -48,7 +48,9 @@
       maxRange = Math.max(maxRange, Math.abs(p.x), Math.abs(p.y), Math.abs(p.z));
     }
     for (const p of pts) {
-      p.x /= maxRange; p.y /= maxRange; p.z /= maxRange;
+      p.x /= maxRange;
+      p.y /= maxRange;
+      p.z /= maxRange;
     }
 
     const arr = [];
@@ -73,23 +75,31 @@
     model.add(tf.layers.dense({ units: 64, activation: 'relu' }));
     model.add(tf.layers.dropout({ rate: 0.1 }));
     model.add(tf.layers.dense({ units: numClasses, activation: 'softmax' }));
-    model.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+    model.compile({
+      optimizer: tf.train.adam(0.001),
+      loss: 'categoricalCrossentropy',
+      metrics: ['accuracy'],
+    });
     return model;
   }
 
   async function train(epochs = 30, batchSize = 32) {
     if (!state.samplesX.length) throw new Error('Sem amostras para treinar.');
-    if ((state.classes?.length || 0) < 2) throw new Error('Defina ao menos duas classes para treinar.');
-    const perClass = state.classes.map(l => ({ label: l, count: state.counts.get(l) || 0 }));
-    const withData = perClass.filter(c => c.count > 0);
+    if ((state.classes?.length || 0) < 2)
+      throw new Error('Defina ao menos duas classes para treinar.');
+    const perClass = state.classes.map((l) => ({ label: l, count: state.counts.get(l) || 0 }));
+    const withData = perClass.filter((c) => c.count > 0);
     if (withData.length < 2) throw new Error('Adicione amostras em pelo menos duas classes.');
-    const xs = tf.tensor2d(state.samplesX.map(v => Array.from(v)));
+    const xs = tf.tensor2d(state.samplesX.map((v) => Array.from(v)));
     const ysIdx = tf.tensor1d(state.samplesY, 'int32');
     const ys = tf.oneHot(ysIdx, state.classes.length).toFloat();
-    xs.print ? null : null; 
+    xs.print ? null : null;
     const model = buildModel(xs.shape[1], state.classes.length);
     const history = await model.fit(xs, ys, {
-      epochs, batchSize, shuffle: true, validationSplit: 0.15,
+      epochs,
+      batchSize,
+      shuffle: true,
+      validationSplit: 0.15,
     });
     tf.dispose([xs, ysIdx, ys]);
     state.model = model;
@@ -100,7 +110,7 @@
     if (!state.model) return [];
     const x = tf.tensor2d([Array.from(featureVec)]);
     const probs = state.model.predict(x);
-    const arr = (await probs.data());
+    const arr = await probs.data();
     tf.dispose([x, probs]);
     return state.classes.map((label, i) => ({ className: label, probability: arr[i] || 0 }));
   }
@@ -124,15 +134,15 @@
 
   async function loadFromBrowserFiles(fileList) {
     const files = Array.from(fileList || []);
-    const modelFile = files.find(f => f.name.endsWith('.json') && f.name !== 'labels.json');
+    const modelFile = files.find((f) => f.name.endsWith('.json') && f.name !== 'labels.json');
     if (!modelFile) throw new Error('Arquivo model.json não encontrado.');
 
-    const labelsFile = files.find(f => f.name === 'labels.json');
+    const labelsFile = files.find((f) => f.name === 'labels.json');
     if (labelsFile) {
-        const labels = JSON.parse(await labelsFile.text());
-        setClasses(labels);
+      const labels = JSON.parse(await labelsFile.text());
+      setClasses(labels);
     } else {
-        setClasses([]); 
+      setClasses([]);
     }
 
     state.model = await tf.loadLayersModel(tf.io.browserFiles(files));
@@ -158,22 +168,22 @@
 
   async function loadFromUrl(modelUrl) {
     try {
-        state.model = await tf.loadLayersModel(modelUrl);
-        return !!state.model;
+      state.model = await tf.loadLayersModel(modelUrl);
+      return !!state.model;
     } catch (e) {
-        console.error("Falha ao carregar modelo da URL:", e);
-        return false;
+      console.error('Falha ao carregar modelo da URL:', e);
+      return false;
     }
   }
 
   function downloadDataset(name = 'gesture-dataset.json') {
     if (!state.samplesX.length) {
-        throw new Error('Nenhum dado de amostra para exportar.');
+      throw new Error('Nenhum dado de amostra para exportar.');
     }
     const dataset = {
-        labels: state.classes,
-        features: state.samplesX.map(arr => Array.from(arr)), // Convert Float32Array to plain array
-        targets: state.samplesY,
+      labels: state.classes,
+      features: state.samplesX.map((arr) => Array.from(arr)), // Convert Float32Array to plain array
+      targets: state.samplesY,
     };
     const json = JSON.stringify(dataset);
     const blob = new Blob([json], { type: 'application/json' });
@@ -201,13 +211,13 @@
       }
     }
 
-    state.samplesX = dataset.features.map(f => new Float32Array(f));
+    state.samplesX = dataset.features.map((f) => new Float32Array(f));
     state.samplesY = dataset.targets;
   }
 
   function clearSamplesForClass(labelToClear) {
     if (!state.label2idx.has(labelToClear)) {
-        throw new Error(`Classe desconhecida: ${labelToClear}`);
+      throw new Error(`Classe desconhecida: ${labelToClear}`);
     }
     const classIdxToClear = state.label2idx.get(labelToClear);
 
@@ -215,10 +225,10 @@
     const newSamplesY = [];
 
     for (let i = 0; i < state.samplesY.length; i++) {
-        if (state.samplesY[i] !== classIdxToClear) {
-            newSamplesX.push(state.samplesX[i]);
-            newSamplesY.push(state.samplesY[i]);
-        }
+      if (state.samplesY[i] !== classIdxToClear) {
+        newSamplesX.push(state.samplesX[i]);
+        newSamplesY.push(state.samplesY[i]);
+      }
     }
 
     state.samplesX = newSamplesX;
@@ -237,9 +247,9 @@
     loadFromIndexedDB,
     loadFromBrowserFiles,
     downloadModel,
-    loadFromUrl, 
-    downloadDataset, 
-    loadDataset, 
-    clearSamplesForClass, 
+    loadFromUrl,
+    downloadDataset,
+    loadDataset,
+    clearSamplesForClass,
   };
 })();

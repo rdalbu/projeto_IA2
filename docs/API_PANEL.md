@@ -1,15 +1,18 @@
 API + Painel (opcional)
 
 Descrição
+
 - Além do modo CLI (janela OpenCV), o projeto possui uma API FastAPI com painel web para preview da câmera (MJPEG), alternar overlay, alternar saída (PC x ESP32) e ver eventos de gesto/voz em tempo real.
 
 Como usar
+
 1. Ajuste `config.json` conforme seu ambiente (câmera, serial, modelos, etc.).
 2. Inicie a API: `uvicorn src.detector_gestos.api:app --reload`
 3. Abra o painel: `http://127.0.0.1:8000/front`
 4. Use os controles para iniciar/parar IA, habilitar KWS (microfone), alternar overlay e saída.
 
 Endpoints úteis
+
 - `GET /start` — inicia o runner em background
 - `GET /stop` — para o runner
 - `GET /state` — estado do runner
@@ -21,5 +24,5 @@ Endpoints úteis
 - `WS /ws` — eventos de gesto/KWS em tempo real
 
 Observações
-- O painel (front) está em `src/detector_gestos/front-end/` e é servido automaticamente em `/front`.
 
+- O painel (front) está em `src/detector_gestos/front-end/` e é servido automaticamente em `/front`.

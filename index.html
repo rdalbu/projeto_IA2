@@ -1,21 +1,53 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>IA2 — Detecção de Gestos (TM + MediaPipe Hands)</title>
     <style>
-      body { font-family: system-ui, Arial, sans-serif; margin: 16px; }
-      .row { display: flex; gap: 16px; align-items: flex-start; }
-      .col { display: flex; flex-direction: column; gap: 8px; }
-      video, canvas { border: 1px solid #ccc; border-radius: 4px; }
-      #predictions { font-family: ui-monospace, Consolas, monospace; white-space: pre-wrap; }
-      .controls { display: flex; gap: 8px; align-items: center; }
-      .ok { color: #0a7; }
-      .warn { color: #c80; }
-      .err { color: #c33; }
-      .muted { color: #666; }
-      label input { margin-right: 6px; }
+      body {
+        font-family: system-ui, Arial, sans-serif;
+        margin: 16px;
+      }
+      .row {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      video,
+      canvas {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      #predictions {
+        font-family: ui-monospace, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .ok {
+        color: #0a7;
+      }
+      .warn {
+        color: #c80;
+      }
+      .err {
+        color: #c33;
+      }
+      .muted {
+        color: #666;
+      }
+      label input {
+        margin-right: 6px;
+      }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js"></script>
@@ -35,29 +67,44 @@
       <button id="stopBtn" disabled>Parar</button>
       <span id="status" class="muted">Aguardando autorização…</span>
     </div>
-    <div class="row" style="margin-top:12px;">
+    <div class="row" style="margin-top: 12px">
       <div class="col">
         <video id="video" autoplay playsinline width="640" height="480" muted></video>
         <canvas id="overlay" width="640" height="480"></canvas>
       </div>
-      <div class="col" style="min-width:360px;">
+      <div class="col" style="min-width: 360px">
         <h3>Predições</h3>
         <div id="predictions" class="muted">Sem dados.</div>
         <hr />
         <h3>Coleta e Teste de Gestos</h3>
         <div class="controls">
-          <label><input type="checkbox" id="useGesture" /> Usar modelo de teste (após treinar)</label>
+          <label
+            ><input type="checkbox" id="useGesture" /> Usar modelo de teste (após treinar)</label
+          >
         </div>
         <div class="controls">
-          <input id="gestureClasses" type="text" placeholder="Classes (ex: pinça,passar,neutro)" style="flex:1;" />
+          <input
+            id="gestureClasses"
+            type="text"
+            placeholder="Classes (ex: pinça,passar,neutro)"
+            style="flex: 1"
+          />
           <button id="setClassesBtn">Definir classes</button>
         </div>
         <div class="controls">
-          <select id="sampleLabelSelect" style="flex:1;"></select>
+          <select id="sampleLabelSelect" style="flex: 1"></select>
           <button id="addSampleBtn">Adicionar amostra</button>
           <button id="clearClassBtn">Limpar Classe</button>
-          <input type="number" id="recordDuration" value="5" min="1" max="60" style="width: 50px;" title="Duração da gravação (segundos)">
-          <span class="muted" style="margin-right: 5px;">s</span>
+          <input
+            type="number"
+            id="recordDuration"
+            value="5"
+            min="1"
+            max="60"
+            style="width: 50px"
+            title="Duração da gravação (segundos)"
+          />
+          <span class="muted" style="margin-right: 5px">s</span>
           <button id="recordBtn">Gravar</button>
         </div>
         <div class="controls">
@@ -69,23 +116,42 @@
           <span id="gestureStatus" class="muted"></span>
         </div>
         <div id="gestureCounts" class="muted">Sem classes.</div>
-        <input type="file" id="datasetFileInput" style="display:none" accept=".json" />
-        <input type="file" id="gestureFileInput" multiple style="display:none" accept=".json,.bin,.weights,.txt" />
+        <input type="file" id="datasetFileInput" style="display: none" accept=".json" />
+        <input
+          type="file"
+          id="gestureFileInput"
+          multiple
+          style="display: none"
+          accept=".json,.bin,.weights,.txt"
+        />
 
-        <hr style="width:100%; margin-top: 16px; margin-bottom: 0;"/>
+        <hr style="width: 100%; margin-top: 16px; margin-bottom: 0" />
 
         <h3>Coleta e Teste de Voz (KWS)</h3>
         <div class="controls">
           <label><input type="checkbox" id="useKws" /> Usar modelo de teste (após treinar)</label>
         </div>
         <div class="controls">
-          <input id="kwsClasses" type="text" placeholder="Palavras (ex: proximo,voltar,pause)" style="flex:1;" />
+          <input
+            id="kwsClasses"
+            type="text"
+            placeholder="Palavras (ex: proximo,voltar,pause)"
+            style="flex: 1"
+          />
           <button id="setKwsClassesBtn">Definir palavras</button>
         </div>
         <div class="controls">
-          <select id="kwsSampleLabelSelect" style="flex:1;"></select>
-          <input type="number" id="kwsRecordDuration" value="1" min="1" max="60" style="width: 50px;" title="Duração da gravação (segundos)">
-          <span class="muted" style="margin-right: 5px;">s</span>
+          <select id="kwsSampleLabelSelect" style="flex: 1"></select>
+          <input
+            type="number"
+            id="kwsRecordDuration"
+            value="1"
+            min="1"
+            max="60"
+            style="width: 50px"
+            title="Duração da gravação (segundos)"
+          />
+          <span class="muted" style="margin-right: 5px">s</span>
           <button id="recordKwsSampleBtn">Gravar</button>
           <button id="clearKwsClassBtn">Limpar Palavra</button>
         </div>
@@ -99,8 +165,8 @@
         </div>
 
         <div id="kwsCounts" class="muted">Sem palavras.</div>
-        <input type="file" id="kwsDatasetFileInput" style="display:none" accept=".json" />
+        <input type="file" id="kwsDatasetFileInput" style="display: none" accept=".json" />
       </div>
     </div>
   </body>
-  </html>
+</html>

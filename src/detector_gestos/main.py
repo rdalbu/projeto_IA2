@@ -1,242 +1,204 @@
-importcv2
-importpyautogui
-importtime
-importjson
-importos
-importserial
-importthreading
-importqueue
-importnumpyasnp
-importsounddeviceassd
+import cv2
+import pyautogui
+import time
+import json
+import os
+import serial
+import threading
+import queue
+import numpy as np
+import sounddevice as sd
 
-from.hand_detectorimportDetectorMaos
-from.ml_gestureimportKerasGestureClassifier
-from.kws_classifierimportKwsClassifier
+from .hand_detector import DetectorMaos
+from .ml_gesture import KerasGestureClassifier
+from .kws_classifier import KwsClassifier
 
-command_queue=queue.Queue()
-audio_buffer=[]
-buffer_lock=threading.Lock()
 
-defload_config(path):
+def load_config(path):
     try:
-        withopen(path,'r',encoding='utf-8')asf:
-            returnjson.load(f)
-exceptFileNotFoundError:
-        print(f"Aviso: Arquivo '{os.path.basename(path)}' não encontrado. Usando configurações padrão.")
-return{}
-exceptjson.JSONDecodeError:
-        print(f"Erro: Falha ao decodificar '{os.path.basename(path)}'. Usando configurações padrão.")
-return{}
-
-defaudio_callback(indata,frames,time,status):
-    ifstatus:
-        print(status)
-withbuffer_lock:
-        audio_buffer.append(indata.copy())
-
-defprocess_audio_thread(kws_classifier,config):
-    globalaudio_buffer
-min_confidence=config.get("kws_confianca_minima",0.9)
-mapeamento_kws=config.get("mapeamento_kws",{})
-sample_rate=kws_classifier.sample_rate
-duration=kws_classifier.duration
-expected_length=int(sample_rate*duration)
-
-print("Thread de processamento de áudio iniciada.")
-whileTrue:
-        withbuffer_lock:
-            iflen(audio_buffer)>0:
-                data=np.concatenate(audio_buffer)
-audio_buffer.clear()
-else:
-                data=None
-
-ifdataisnotNoneandlen(data)>=expected_length:
-            audio_segment=data[-expected_length:,0]
-
-try:
-                label,prob=kws_classifier.predict(audio_segment)
-ifprob>=min_confidenceandlabelnotin["neutro","desconhecido"]:
-                    acao=mapeamento_kws.get(label)
-ifacao:
-                        print(f"Palavra-chave: {label} ({prob:.2f}) -> Colocando na fila: '{acao}'")
-command_queue.put(acao)
-exceptExceptionase:
-                print(f"Erro na predição de áudio: {e}")
-
-time.sleep(0.5)
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 
-defmain():
-    config_path=os.path.join(os.path.dirname(__file__),'..','..','config.json')
-config=load_config(config_path)
+def send_local(action):
+    try:
+        pyautogui.press(action)
+        return True
+    except Exception:
+        return False
 
-ser=None
-ifconfig.get('usar_serial',False):
+
+def main():
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    cfg = load_config(os.path.join(root, 'config.json'))
+
+    ser = None
+    if cfg.get('usar_serial', False):
         try:
-            ser=serial.Serial(
-port=config.get('serial_port','COM5'),
-baudrate=config.get('serial_baudrate',115200),
-timeout=1
-)
-print(f"Conectado à porta serial {config.get('serial_port','COM5')}.")
-exceptserial.SerialExceptionase:
-            print(f"ERRO CRÍTICO ao conectar na porta serial: {e}")
-print("Verifique se a porta está correta no 'config.json' e se o ESP32 está conectado.")
-return
+            ser = serial.Serial(
+                port=cfg.get('serial_port', 'COM5'),
+                baudrate=cfg.get('serial_baudrate', 115200),
+                timeout=1,
+            )
+        except serial.SerialException:
+            ser = None
 
-kws_classifier=None
-audio_stream=None
-usar_kws=bool(config.get("usar_kws"))
-ifusar_kws:
-        try:
-            model_path=config.get("kws_modelo_path")
-labels_path=config.get("kws_labels_path")
-ifnotmodel_pathornotos.path.exists(model_path):
-                raiseFileNotFoundError(f"Modelo KWS não encontrado em '{model_path}'.")
-ifnotlabels_pathornotos.path.exists(labels_path):
-                raiseFileNotFoundError(f"Arquivo de labels KWS não encontrado em '{labels_path}'.")
+    kws_classifier = None
+    audio_stream = None
+    command_queue = queue.Queue()
+    audio_buffer = []
+    buffer_lock = threading.Lock()
 
-kws_classifier=KwsClassifier(
-model_path=model_path,
-labels_path=labels_path
-)
+    def audio_callback(indata, frames, time_info, status):
+        if status:
+            pass
+        with buffer_lock:
+            audio_buffer.append(indata.copy())
 
-audio_thread=threading.Thread(
-target=process_audio_thread,
-args=(kws_classifier,config),
-daemon=True
-)
-audio_thread.start()
-
-audio_stream=sd.InputStream(
-callback=audio_callback,
-samplerate=kws_classifier.sample_rate,
-channels=1,
-device=config.get("audio_input_device_index")
-)
-audio_stream.start()
-print("Classificador de palavras-chave (KWS) carregado e stream de áudio iniciado.")
-
-exceptExceptionase:
-            print("Aviso: KWS desabilitado.")
-print("Motivo:",e)
-print("- Verifique os caminhos 'kws_modelo_path' e 'kws_labels_path' no config.json")
-print("- Ou rode o treino: python treinamento\\train_kws_model.py")
-usar_kws=False
-
-cap=None
-detector=None
-ml_classifier=None
-ifconfig.get("usar_modelo_gesto"):
-        cap=cv2.VideoCapture(config.get('indice_camera',0))
-ifnotcap.isOpened():
-            print(f"Erro: Não foi possível abrir a câmera com índice {config.get('indice_camera',0)}.")
-ifser:ser.close()
-ifaudio_stream:audio_stream.stop()
-return
-
-detector=DetectorMaos(
-deteccao_confianca=config.get('confianca_deteccao',0.8),
-rastreio_confianca=config.get('confianca_rastreamento',0.8)
-)
-try:
-            ml_classifier=KerasGestureClassifier(
-model_path=config.get("gesto_modelo_path",""),
-labels=config.get("gesto_labels",[]),
-)
-print("Classificador de gestos (Keras) carregado com sucesso.")
-exceptExceptionase:
-            print(f"ERRO CRÍTICO ao carregar o modelo de gesto: {e}")
-ifser:ser.close()
-ifaudio_stream:audio_stream.stop()
-return
-else:
-        print("Aviso: O uso do modelo de gesto está desabilitado em 'config.json'.")
-
-
-mapeamento_gestos=config.get("mapeamento_gestos",{})
-tempo_ultimo_comando=0
-ultimo_gesto_detectado=None
-contador_frames_gesto=0
-
-print("\n--- Sistema iniciado. Pressione 'ESC' na janela de vídeo para sair. ---")
-
-whileTrue:
-        ifcapandml_classifier:
-            sucesso,imagem=cap.read()
-ifnotsucesso:
-                break
-
-imagem=cv2.flip(imagem,1)
-imagem=detector.encontrar_maos(imagem)
-lista_pontos=detector.encontrar_pontos(imagem)
-
-gesto_atual=None
-iflista_pontos:
+    def process_audio_thread():
+        min_conf = float(cfg.get('kws_confianca_minima', 0.9))
+        mapping = cfg.get('mapeamento_kws', {})
+        sr = kws_classifier.sample_rate
+        dur = kws_classifier.duration
+        exp_len = int(sr * dur)
+        while True:
+            with buffer_lock:
+                data = np.concatenate(audio_buffer) if audio_buffer else None
+                audio_buffer.clear()
+            if data is not None and len(data) >= exp_len:
+                segment = data[-exp_len:, 0]
                 try:
-                    lbl,prob=ml_classifier.predict(lista_pontos,handedness='Right')
-iflblandprob>=config.get("gesto_confianca_minima",0.7):
-                        gesto_atual=lbl
-exceptExceptionase:
-                    print(f"Erro durante a predição de gesto: {e}")
+                    label, prob = kws_classifier.predict(segment)
+                    if prob >= min_conf and label not in ['neutro', 'desconhecido']:
+                        act = mapping.get(label)
+                        if act:
+                            command_queue.put(act)
+                except Exception:
+                    pass
+            time.sleep(0.3)
 
-ifgesto_atual==ultimo_gesto_detectadoandgesto_atualisnotNone:
-                contador_frames_gesto+=1
-else:
-                contador_frames_gesto=1
-ultimo_gesto_detectado=gesto_atual
+    if bool(cfg.get('usar_kws')):
+        try:
+            mp = cfg.get('kws_modelo_path')
+            lp = cfg.get('kws_labels_path')
+            if mp and lp and os.path.exists(mp) and os.path.exists(lp):
+                kws_classifier = KwsClassifier(mp, lp)
+                t = threading.Thread(target=process_audio_thread, daemon=True)
+                t.start()
+                audio_stream = sd.InputStream(
+                    callback=audio_callback,
+                    samplerate=kws_classifier.sample_rate,
+                    channels=1,
+                    device=cfg.get('audio_input_device_index'),
+                )
+                audio_stream.start()
+        except Exception:
+            kws_classifier = None
+            audio_stream = None
 
-gesto_confirmado=None
-ifcontador_frames_gesto>=config.get('frames_confirmacao_gesto',5):
-                gesto_confirmado=gesto_atual
-contador_frames_gesto=0
+    cap = None
+    detector = None
+    ml = None
+    if cfg.get('usar_modelo_gesto'):
+        cap = cv2.VideoCapture(int(cfg.get('indice_camera', 0)))
+        if cap.isOpened():
+            try:
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(cfg.get('camera_width', 640)))
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(cfg.get('camera_height', 480)))
+                cap.set(cv2.CAP_PROP_FPS, float(cfg.get('camera_fps', 30)))
+            except Exception:
+                pass
+            detector = DetectorMaos(
+                deteccao_confianca=float(cfg.get('confianca_deteccao', 0.8)),
+                rastreio_confianca=float(cfg.get('confianca_rastreamento', 0.8)),
+            )
+            try:
+                ml = KerasGestureClassifier(
+                    model_path=cfg.get('gesto_modelo_path', ''),
+                    labels=cfg.get('gesto_labels', []),
+                )
+            except Exception:
+                ml = None
 
-ifgesto_confirmado:
-                acao=mapeamento_gestos.get(gesto_confirmado)
-ifacao:
-                    command_queue.put(acao)
-print(f"Gesto: {gesto_confirmado} -> Colocando na fila: '{acao}'")
-else:
-            imagem=np.zeros((480,640,3),dtype=np.uint8)
-cv2.putText(imagem,"Video desabilitado",(150,240),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),2)
+    mapping_g = cfg.get('mapeamento_gestos', {})
+    min_prob = float(cfg.get('gesto_confianca_minima', 0.7))
+    confirm_frames = int(cfg.get('frames_confirmacao_gesto', 5))
+    cooldown = float(cfg.get('intervalo_entre_comandos_segundos', 1.0))
 
+    last_lbl = None
+    frames_ok = 0
+    last_cmd_ts = 0.0
 
-try:
-            acao_pendente=command_queue.get_nowait()
+    while True:
+        frame = None
+        if cap and cap.isOpened():
+            ok, img = cap.read()
+            if not ok:
+                break
+            img = cv2.flip(img, 1)
+            if detector:
+                vis = detector.encontrar_maos(img.copy())
+                pts = detector.encontrar_pontos(vis)
+            else:
+                vis = img
+                pts = []
+            lbl, prob = None, 0.0
+            if pts and ml:
+                try:
+                    handed = detector.get_handedness(0)
+                    lbl, prob = ml.predict(pts, handedness=handed or 'Right')
+                except Exception:
+                    lbl, prob = None, 0.0
+            cur = lbl if (lbl and prob >= min_prob) else None
+            if cur == last_lbl and cur is not None:
+                frames_ok += 1
+            else:
+                frames_ok = 1
+            last_lbl = cur
+            act = None
+            if frames_ok >= confirm_frames:
+                frames_ok = 0
+                if cur:
+                    act = mapping_g.get(cur)
+                    if act:
+                        command_queue.put(act)
+            try:
+                cmd = command_queue.get_nowait()
+                if time.time() - last_cmd_ts > cooldown:
+                    if ser:
+                        try:
+                            ser.write(f"{cmd}\n".encode('utf-8'))
+                        except serial.SerialException:
+                            pass
+                    else:
+                        send_local(cmd)
+                    last_cmd_ts = time.time()
+            except queue.Empty:
+                pass
+            cv2.imshow('Gestures', vis)
+            if cv2.waitKey(1) & 0xFF == 27:
+                break
+        else:
+            time.sleep(0.1)
 
-iftime.time()-tempo_ultimo_comando>config.get('intervalo_entre_comandos_segundos',1.0):
-                ifser:
-                    try:
-                        ser.write(f'{acao_pendente}\n'.encode('utf-8'))
-print(f"COMANDO -> Enviando via serial: '{acao_pendente}'")
-exceptserial.SerialExceptionase:
-                        print(f"Erro ao enviar comando serial: {e}")
-else:
-                    pyautogui.press(acao_pendente)
-print(f"COMANDO -> Ação local (pyautogui): '{acao_pendente}'")
-
-tempo_ultimo_comando=time.time()
-cv2.putText(imagem,f"Acao: {acao_pendente}",(50,100),cv2.FONT_HERSHEY_SIMPLEX,1.2,(0,255,0),3)
-
-exceptqueue.Empty:
+    if audio_stream:
+        try:
+            audio_stream.stop()
+            audio_stream.close()
+        except Exception:
+            pass
+    if cap:
+        cap.release()
+    cv2.destroyAllWindows()
+    if ser:
+        try:
+            ser.close()
+        except Exception:
             pass
 
-cv2.imshow("Controle de Midia por IA",imagem)
-ifcv2.waitKey(1)&0xFF==27:
-            break
 
-print("\n--- Finalizando o sistema... ---")
-ifaudio_stream:
-        audio_stream.stop()
-audio_stream.close()
-print("Stream de áudio fechado.")
-ifcap:
-        cap.release()
-cv2.destroyAllWindows()
-ifser:
-        ser.close()
-print("Porta serial fechada.")
-
-if__name__=='__main__':
+if __name__ == '__main__':
     main()
+

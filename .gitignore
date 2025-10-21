@@ -9,3 +9,6 @@ data/
 *.mp4
 .DS_Store
 Thumbs.db
+.env
+.env.*
+!.env.example

@@ -1,189 +1,186 @@
-# AI Gesture Media Control with ESP32
+# AI Gesture & Voice Media Control (ESP32 + Browser/Python)
 
-This project lets you control media playback (play/pause, next/previous) on any Bluetooth‑enabled device (phone, tablet, smart TV, etc.) using hand gestures via webcam and/or voice keywords (KWS) via microphone.
+Control media (play/pause, next, previous) via hand gestures (webcam) and/or voice keywords (microphone). Output can be local (PC media keys) or through an ESP32 acting as a Bluetooth keyboard.
 
-The system uses computer vision and AI models (TensorFlow/Keras) to recognize gestures, and an ESP32 to send commands as if it were a Bluetooth keyboard, ensuring broad compatibility.
+—
 
-<!-- Add a demonstration GIF here -->
-<!-- ![Project Demo](path/to/your/gif.gif) -->
+## Quick Start
 
----
+1) Windows + PowerShell (project root):
+```
+tools\run_api.ps1
+```
+2) Open `http://127.0.0.1:8000/front` and enable Camera/Mic.
+3) Optional: connect ESP32 and switch output to “ESP32”.
+
+—
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [How to Run](#how-to-run)
+- [Training](#training)
+- [ESP32](#esp32-output)
+- [Configuration](#configuration-configjson)
+- [KWS Datasets](#kws-datasets--formats)
+- [FAQ / Troubleshooting](#faq--troubleshooting)
+- [Privacy](#privacy)
+- [Code Style](#code-style)
+- [Contributing](#contributing)
+
+—
 
 ## Overview
 
-The project combines computer vision and hardware to create an intuitive media controller. It is ideal when physical access to the device is inconvenient (workouts, kitchen, distant TV, etc.).
+Pipeline
 
-Architecture (pipeline):
+`Webcam` → `MediaPipe Hands` → `Keras` → `Commands` → `Serial (ESP32)` or `Local Keys`
 
-`Webcam` → `Python (OpenCV)` → `AI Recognition (TensorFlow/Keras + MediaPipe Hands)` → `Command Queue` → `Serial (ESP32)` or `Local Keys` → `Target Device`
+Optional: `Microphone` → `KWS (voice)` → `Commands`.
 
-Optional: `Microphone` → `KWS (voice)` → `Command Queue`.
+Features
 
-### Features
+- Real‑time gestures (MediaPipe + Keras)
+- Voice KWS in Browser and Python
+- FastAPI Web Panel: preview, overlay toggle, KWS on/off, PC vs ESP32 output
+- Quick Test front (`index.html`) with in‑browser training
+- Python trainers (gestures + KWS) for final models
 
-- Real‑time gesture recognition (MediaPipe Hands + Keras)
-- Optional KWS (voice) with MFCC + Keras model
-- Outputs: Serial (ESP32 BLE Keyboard) or local media keys (pyautogui)
-- CLI (OpenCV window) and API + Web Panel (MJPEG preview, overlay, real‑time log)
-- Complete training flow (web collection + Python final training)
-
----
+—
 
 ## Requirements
 
-### Hardware
-- Webcam
-- ESP32 (e.g., NodeMCU‑32S)
+- Windows 10/11 recommended
+- Python 3.10/3.11 (3.8+ works)
+- PowerShell
+- Arduino IDE (for ESP32)
+- ffmpeg (only for Python KWS with `audioBase64`)
 
-### Software
-- Python 3.8+
-- Arduino IDE
-- Git (optional)
+—
 
----
+## Installation
 
-## SETUP: Installation and Configuration
-
-Follow these steps to set up the environment.
-
-### Step 1: Get the Project
-
-Clone or download ZIP:
-
-```sh
-git clone https://github.com/rdalbu/projeto_IA2.git
+```
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-### Step 2: Python Environment (Recommended)
+—
 
-1. Open a terminal in the project root.
-2. Create a virtual environment (once):
-   ```sh
-   python -m venv .venv
-   ```
-3. Activate it (every time):
-   ```sh
-   .\.venv\Scripts\activate
-   ```
-4. Install dependencies:
-   ```sh
-   pip install -r requirements.txt
-   ```
+## How to Run
 
-### Step 3: Prepare the ESP32
+Option A — Quick Test (Front)
 
-1. Open Arduino IDE.
-2. Install `BleKeyboard` (T‑vK) in `Tools > Manage Libraries...`.
-3. Open `esp32_sketch/esp32_controller.ino`.
-4. Select board/port and upload.
+```
+python -m http.server 5500
+```
+Open `http://localhost:5500/index.html`, allow mic/cam, test Gestures + KWS.
 
-### Step 4: Bluetooth Pairing
+Option B — Web Panel (API)
 
-Pair the device named **"Controle de Gestos IA"**.
+- Script:
+```
+tools\run_api.ps1
+```
+Opens `http://127.0.0.1:8000/front`.
 
-### Step 5: Configure `config.json`
-
-Adjust `serial_port`, `usar_serial`, `indice_camera`, resolution/FPS, model paths, labels and mappings.
-
----
-
-## USAGE
-
-### Mode 1 — CLI (OpenCV window)
-
-1. Connect ESP32 (if using serial) and activate the venv.
-2. Run:
-   ```sh
-   python -m src.detector_gestos.main
-   ```
-3. A window will open with the camera preview; commands are sent via serial or locally.
-
-### Mode 2 — API + Web Panel
-
-1. Start the API:
-   ```sh
-   uvicorn src.detector_gestos.api:app --reload
-   ```
-2. Open `http://127.0.0.1:8000/front`.
-3. Start/stop AI, enable KWS (mic), toggle overlay, choose output (PC vs ESP32).
-
----
-
-## ADVANCED: Training Your Own Models
-
-### Phase 1: Data Collection & Quick Test (Browser)
-
-1. Start a local server in the root: `python -m http.server`.
-2. Open `index.html` in the browser.
-3. Follow the instructions to define classes, record samples, train quick models, and test live.
-4. Export datasets: `gesture-dataset.json` and `kws-samples.json` (to the project root).
-
-### Phase 2: Final Training (Python)
-
-1. Gestures (Keras):
-   ```sh
-   python treinamento\train_model.py
-   ```
-2. KWS (voice):
-   ```sh
-   python treinamento\train_kws_model.py
-   ```
-Models are saved under `models/`.
-
-### Phase 3: Update Configuration
-
-Edit `config.json` to update `gesto_labels`, `kws_labels`, and the mappings `mapeamento_gestos`/`mapeamento_kws`.
-
----
-
-## Important Notes about KWS
-
-Two KWS dataset formats are supported:
-
-1) `kws-samples.json` with `samples[].spectrogram` (recommended)
-- Trains directly, no ffmpeg required.
-
-2) `kws-samples.json` with `samples[].audioBase64` (browser recording)
-- In practice, usually WebM/Opus (even if MIME says `audio/wav`).
-- Requires ffmpeg in PATH to convert to WAV before MFCC extraction.
-- The script detects the format and prints guidance.
-
-#### Convert audioBase64 → spectrogram (for browser training)
-
-If you exported a file with `samples[].audioBase64` (raw recordings), convert it to 2D spectrograms compatible with the web trainer:
-
-```sh
-python treinamento\convert_kws_audio_to_spectrogram.py -i kws-samples.json -o kws-samples-spectrogram.json
+- Manual:
+```
+uvicorn src.detector_gestos.api:app --reload
 ```
 
-- For WebM/Opus (MediaRecorder) samples, `ffmpeg` must be available in PATH.
-- The output file (`kws-samples-spectrogram.json`) can be imported in the browser (index.html) to train directly.
+Option C — CLI (OpenCV window)
 
-### Installing FFmpeg on Windows
+```
+python -m src.detector_gestos.main
+```
 
-- Winget (search an available ID):
-  - `winget source update`
-  - `winget search ffmpeg`
-  - `winget install --id Gyan.FFmpeg -e`
-- Chocolatey (Admin): `choco install ffmpeg -y`
-- Scoop:
-  - `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
-  - `iwr -useb get.scoop.sh | iex`
-  - `scoop install ffmpeg`
-- Manual: download a static build, extract to `C:\ffmpeg`, add `C:\ffmpeg\bin` to PATH.
-- Verify with `ffmpeg -version`.
+—
 
----
+## Training
 
-## Troubleshooting
+Gestures (Python)
 
-- Serial errors: check connection and COM in `config.json`.
-- Camera open failure: adjust `indice_camera` (0,1,2...).
-- Poor gesture accuracy: improve lighting, lower `gesto_confianca_minima`, train more data.
-- KWS ffmpeg warning: install ffmpeg or re‑export dataset as spectrograms in the browser.
+```
+python treinamento\train_model.py
+```
+Interactive trainer (capture + train):
+```
+python -m src.detector_gestos.train_gesture
+```
 
----
+KWS (Voice)
 
-## Contributions
+In Browser: front converts `audioBase64` → `spectrogram` and trains in TF.js.
 
-Contributions are welcome! Please open an issue to report bugs or suggest improvements.
+In Python (final model):
+```
+python treinamento\train_kws_model.py
+```
+- Accepts `samples[].spectrogram` directly.
+- Accepts `audioBase64` (WebM/Opus) if ffmpeg is in PATH (see `docs/KWS-FFMPEG.md`).
+
+—
+
+## ESP32 Output
+
+1) Arduino IDE → `esp32_sketch/esp32_controller.ino` → upload.
+2) Pair “Controle de Gestos IA”.
+3) `config.json`: `usar_serial: true`, set `serial_port` (e.g. `COM5`).
+4) In the panel, switch output to ESP32.
+
+—
+
+## Configuration (`config.json`)
+
+- Serial: `usar_serial`, `serial_port`, `serial_baudrate`
+- Camera: `indice_camera`, `camera_width`, `camera_height`, `camera_fps`
+- Gestures: `usar_modelo_gesto`, `gesto_modelo_path`, `gesto_labels`, `gesto_confianca_minima`, `frames_confirmacao_gesto`
+- KWS: `usar_kws`, `kws_modelo_path`, `kws_labels_path`, `kws_confianca_minima`, `audio_input_device_index`
+- Maps: `mapeamento_gestos`, `mapeamento_kws`
+- Preview: `preview_max_fps`, `jpeg_quality`
+
+—
+
+## KWS Datasets & Formats
+
+- `kws-samples.json` with `samples[].spectrogram` → ready (web/Python)
+- `kws-dataset.json`/`kws-samples.json` with `samples[].audioBase64` → web converts; Python requires `ffmpeg`.
+See `docs/KWS-FFMPEG.md`.
+
+—
+
+## FAQ / Troubleshooting
+
+- KWS always predicts “pause”?
+  - Retrain after fixing `inputShape`. Prefer collecting/training in the same frontend (web) or train in Python.
+- “ffmpeg not found” (Python KWS)?
+  - Install via winget/choco/scoop, reopen terminal; check `ffmpeg -version`.
+- Camera won’t open?
+  - Adjust `indice_camera`.
+- ESP32 unavailable?
+  - Check `serial_port` and connection; panel falls back to PC when serial is unavailable.
+- Mic/cam denied?
+  - Serve via `localhost` (don’t open file directly), allow permissions in the browser.
+
+—
+
+## Privacy
+
+Audio/video are processed locally. The panel runs on `localhost`; data isn’t sent to external servers.
+
+—
+
+## Code Style
+
+- JS/CSS/HTML: Prettier (`.prettierrc.json`)
+- Python: Black (`pyproject.toml`). Apply with `pip install black && black .`
+
+—
+
+## Contributing
+
+Issues and PRs are welcome. Suggestions: panel improvements, KWS collection/training, more actions/integrations, gesture detector tuning.

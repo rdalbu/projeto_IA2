@@ -295,7 +295,7 @@
           const spec = result.spectrogram; const frameSize = Number(spec.frameSize) || (recognizer.params && recognizer.params().numFeatureBins) || null; const total = (spec.data && spec.data.length) || 0; const frames = frameSize ? Math.max(1, Math.floor(total / frameSize)) : null; const feed = (frameSize && frames) ? { data: spec.data, shape: [frameSize, frames] } : spec.data; const preds = await window.KwsTrainer.predictProbs(feed);
           if (preds) kwsPreds = preds;
         }
-      }, { includeSpectrogram: true, probabilityThreshold: 0.75, overlapFactor: 0.5 });
+      }, { includeSpectrogram: true, probabilityThreshold: 0.5, overlapFactor: 0.5 });
     } catch (e) {
       console.error("Erro ao iniciar a escuta de teste KWS:", e);
     }
@@ -500,16 +500,16 @@
 
       els.recordKwsSampleBtn.disabled = true;
       els.kwsStatus.textContent = `Gravando "${label}" por 1s...`;
-      // sobrescreve mensagem com duraÃ§Ã£o escolhida
+
       els.kwsStatus.textContent = `Gravando "${label}" por ${secs}s...`;
 
       try {
         await recognizer.listen(result => {
-          // recognizer.stopListening(); // adiado para o timer externo
+
           window.KwsTrainer.addSample(label, result.spectrogram.data);
-          // renderKwsCounts(); // adiado para o tÃ©rmino da gravaÃ§Ã£o
+
           els.kwsStatus.textContent = `Amostra para "${label}" gravada.`;
-          // els.recordKwsSampleBtn.disabled = false;
+
         }, { includeSpectrogram: true, overlapFactor: 0 });
       } catch (e) {
         els.kwsStatus.textContent = `Erro ao gravar: ${e.message}`;
@@ -537,7 +537,8 @@
       if (!recognizer) { els.kwsStatus.textContent = 'Inicie a captura primeiro.'; return; }
       try {
         els.kwsStatus.textContent = 'Treinando modelo de voz.';
-        let frames, bins; try { const p = recognizer.params && recognizer.params(); frames = p && p.numFrames; bins = p && p.numFeatureBins; } catch {} const inputShape = (Number.isFinite(frames) && Number.isFinite(bins)) ? [frames, bins] : undefined;
+        let frames, bins; try { const p = recognizer.params && recognizer.params(); frames = p && p.numFrames; bins = p && p.numFeatureBins; } catch {}
+        const inputShape = (Number.isFinite(frames) && Number.isFinite(bins)) ? [bins, frames] : undefined;
         const hist = await window.KwsTrainer.train(inputShape, 30, 16);
         const acc = (hist?.history?.val_acc?.slice(-1)[0] ?? hist?.history?.acc?.slice(-1)[0] ?? 0) * 100;
         els.kwsStatus.textContent = `Treino concluÃ­do. accâ‰ˆ${acc.toFixed(1)}%`;

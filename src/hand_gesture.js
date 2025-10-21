@@ -24,11 +24,10 @@
     return state.classes.map(l => ({ label: l, count: state.counts.get(l) || 0 }));
   }
 
-  // Normalização:
-  // - Usa a primeira mão
-  // - Centraliza no punho (landmark 0)
-  // - Escala pelo maior alcance entre pontos (max distance)
-  // - Espelha eixo X para uniformizar left/right se quiser (mirrorX=true)
+
+
+
+
   function landmarksToFeatures(landmarks, handedness = 'Right', { includeZ = false, mirrorX = true } = {}) {
     if (!Array.isArray(landmarks) || landmarks.length === 0) return null;
     const lm = landmarks[0];
@@ -37,7 +36,6 @@
     const wrist = lm[0];
     const pts = lm.map(p => ({ x: p.x, y: p.y, z: p.z ?? 0 }));
 
-    // Centraliza no punho e espelha se mão esquerda
     const flip = (mirrorX && String(handedness).toLowerCase().startsWith('left')) ? -1 : 1;
     for (const p of pts) {
       p.x = (p.x - wrist.x) * flip;
@@ -45,7 +43,6 @@
       p.z = (p.z - wrist.z);
     }
 
-    // Escala pelo max range
     let maxRange = 1e-6;
     for (const p of pts) {
       maxRange = Math.max(maxRange, Math.abs(p.x), Math.abs(p.y), Math.abs(p.z));
@@ -130,7 +127,6 @@
     const modelFile = files.find(f => f.name.endsWith('.json') && f.name !== 'labels.json');
     if (!modelFile) throw new Error('Arquivo model.json não encontrado.');
 
-    // Try to load labels, but don't fail if not present
     const labelsFile = files.find(f => f.name === 'labels.json');
     if (labelsFile) {
         const labels = JSON.parse(await labelsFile.text());
@@ -157,7 +153,6 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Then, save the model itself (will trigger another download)
     await state.model.save(`downloads://${name}`);
   }
 
@@ -197,7 +192,7 @@
       throw new Error('Arquivo de dataset inválido ou corrompido.');
     }
     setClasses(dataset.labels);
-    // Recalcula a contagem a partir dos dados carregados
+
     state.counts.clear();
     for (const target of dataset.targets) {
       const label = state.classes[target];
@@ -205,7 +200,7 @@
         state.counts.set(label, (state.counts.get(label) || 0) + 1);
       }
     }
-    // Carrega as amostras
+
     state.samplesX = dataset.features.map(f => new Float32Array(f));
     state.samplesY = dataset.targets;
   }

@@ -17,10 +17,25 @@ class DetectorMaos:
         )
         self.desenho_mp = mp.solutions.drawing_utils
         self.resultado = None
+        self._ultima_mao = []  # guarda handedness por mão
 
     def encontrar_maos(self, imagem, desenho=True):
         imagem_rgb = cv2.cvtColor(imagem, cv2.COLOR_BGR2RGB)
         self.resultado = self.maos.process(imagem_rgb)
+        # Atualiza handedness
+        self._ultima_mao = []
+        try:
+            if self.resultado and getattr(self.resultado, 'multi_handedness', None):
+                for h in self.resultado.multi_handedness:
+                    # cada h tem .classification[0].label em {'Left','Right'}
+                    label = None
+                    try:
+                        label = h.classification[0].label
+                    except Exception:
+                        label = None
+                    self._ultima_mao.append(label or 'Right')
+        except Exception:
+            self._ultima_mao = []
 
         if self.resultado.multi_hand_landmarks:
             for pontos in self.resultado.multi_hand_landmarks:
@@ -39,3 +54,8 @@ class DetectorMaos:
                 lista_pontos.append([id, centro_x, centro_y])
         
         return lista_pontos
+
+    def get_handedness(self, mao_num=0):
+        if self._ultima_mao and len(self._ultima_mao) > mao_num:
+            return self._ultima_mao[mao_num]
+        return 'Right'

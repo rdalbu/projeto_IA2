@@ -9,3 +9,6 @@ sounddevice
 tensorflow; platform_system == "Windows"
 mediapipe
 tensorflowjs
+fastapi
+uvicorn[standard]
+aiofiles

@@ -1,0 +1,14 @@
+models/
+node_modules/
+dist/
+build/
+.venv/
+*.h5
+*.bin
+*.weights
+*.onnx
+*.tflite
+*.zip
+*.tar
+*.tar.gz
+

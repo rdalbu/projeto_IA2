@@ -105,7 +105,7 @@ python -m src.detector_gestos.main
 Gestures (Python)
 
 ```
-python treinamento\train_model.py
+python training\train_model.py
 ```
 Interactive trainer (capture + train):
 ```
@@ -118,7 +118,7 @@ In Browser: front converts `audioBase64` → `spectrogram` and trains in TF.js.
 
 In Python (final model):
 ```
-python treinamento\train_kws_model.py
+python training\train_kws_model.py
 ```
 - Accepts `samples[].spectrogram` directly.
 - Accepts `audioBase64` (WebM/Opus) if ffmpeg is in PATH (see `docs/KWS-FFMPEG.md`).

@@ -25,4 +25,4 @@ Endpoints úteis
 
 Observações
 
-- O painel (front) está em `src/detector_gestos/front-end/` e é servido automaticamente em `/front`.
+- O painel (front) está em `server/front/` e é servido automaticamente em `/front`.

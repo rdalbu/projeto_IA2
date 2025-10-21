@@ -40,4 +40,4 @@ Verificação
 Treino
 
 - Garanta `pip install soundfile` no venv.
-- Rode: `python treinamento\train_kws_model.py`.
+- Rode: `python training\train_kws_model.py`.

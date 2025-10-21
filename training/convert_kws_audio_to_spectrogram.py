@@ -1,0 +1,1 @@
+from treinamento.convert_kws_audio_to_spectrogram import *

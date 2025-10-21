@@ -1,5 +1,5 @@
 Param(
-  [string]$Host = "127.0.0.1",
+  [string]$BindHost = "127.0.0.1",
   [int]$Port = 8000
 )
 
@@ -16,8 +16,7 @@ Write-Host "==> Instalando dependências (requirements.txt)" -ForegroundColor Cy
 pip install --upgrade pip > $null
 pip install -r requirements.txt
 
-Write-Host "==> Iniciando API em http://$Host:$Port/front" -ForegroundColor Green
-Start-Process "http://$Host:$Port/front" | Out-Null
+Write-Host "==> Iniciando API em http://${BindHost}:$Port/front" -ForegroundColor Green
+Start-Process "http://${BindHost}:$Port/front" | Out-Null
 
-uvicorn src.detector_gestos.api:app --host $Host --port $Port --reload
-
+uvicorn src.detector_gestos.api:app --host $BindHost --port $Port --reload

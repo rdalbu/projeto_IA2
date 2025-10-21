@@ -191,7 +191,6 @@ async def ws_endpoint(ws: WebSocket):
         hub.unsubscribe(q)
 
 
-# Servir o novo front em /front
 front_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'server', 'front'))
 if os.path.isdir(front_dir):
     app.mount("/front", StaticFiles(directory=front_dir, html=True), name="front")

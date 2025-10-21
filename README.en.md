@@ -149,7 +149,7 @@ python training\train_kws_model.py
 
 - `kws-samples.json` with `samples[].spectrogram` → ready (web/Python)
 - `kws-dataset.json`/`kws-samples.json` with `samples[].audioBase64` → web converts; Python requires `ffmpeg`.
-See `docs/KWS-FFMPEG.md`.
+See section "KWS + FFmpeg — Quick Guide".
 
 —
 
@@ -184,3 +184,51 @@ Audio/video are processed locally. The panel runs on `localhost`; data isn’t s
 ## Contributing
 
 Issues and PRs are welcome. Suggestions: panel improvements, KWS collection/training, more actions/integrations, gesture detector tuning.
+
+—
+
+## API / Panel Details
+
+- Start API: `uvicorn src.detector_gestos.api:app --reload`
+- Panel: `http://127.0.0.1:8000/front`
+- Useful endpoints:
+  - `GET /start` — start runner
+  - `GET /stop` — stop runner
+  - `GET /state` — runner state
+  - `GET /output/state`, `POST /output/set?mode=serial|local` — output mode
+  - `GET /kws/state`, `POST /kws/enable`, `POST /kws/disable` — KWS control
+  - `GET /frame.jpg` — last frame (JPEG)
+  - `GET /stream` — MJPEG preview
+  - `GET /overlay/state`, `POST /overlay/enable`, `POST /overlay/disable` — overlay
+  - `WS /ws` — real‑time gesture/KWS events
+
+—
+
+## KWS + FFmpeg — Quick Guide
+
+Summary
+- Supported formats:
+  - `kws-samples.json` with `samples[].spectrogram` (recommended): train directly (web/Python).
+  - `kws-samples.json` with `samples[].audioBase64` (browser WebM/Opus): requires ffmpeg to convert before MFCC in Python.
+
+How to resolve
+1) Install ffmpeg and train in Python; or
+2) In the browser (index.html), export dataset with `samples[].spectrogram` and train in the front.
+
+Install FFmpeg (Windows)
+- Winget:
+  - `winget source update`
+  - `winget search ffmpeg`
+  - `winget install --id Gyan.FFmpeg -e`
+- Chocolatey (Admin): `choco install ffmpeg -y`
+- Scoop:
+  - `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
+  - `iwr -useb get.scoop.sh | iex`
+  - `scoop install ffmpeg`
+- Manual: download a static build, extract to `C:\ffmpeg`, add `C:\ffmpeg\bin` to PATH.
+
+Verification
+- Restart terminal and run: `ffmpeg -version`
+
+Training (Python)
+- `python training\train_kws_model.py`

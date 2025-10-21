@@ -149,7 +149,7 @@ python training\train_kws_model.py
 
 - `kws-samples.json` com `samples[].spectrogram` → pronto (web/Python)
 - `kws-dataset.json`/`kws-samples.json` com `samples[].audioBase64` → web converte; no Python requer `ffmpeg`.
-Consulte `docs/KWS-FFMPEG.md`.
+Veja a seção "KWS + FFmpeg (Guia Rápido)".
 
 —
 
@@ -184,3 +184,51 @@ Vídeo e áudio são processados localmente. O painel usa `localhost`, e os dado
 ## Contribuindo
 
 Issues e PRs são bem‑vindos. Sugestões: melhorias no painel, coleta/treino de KWS, integração com mais ações e ajustes no detector de gestos.
+
+—
+
+## Detalhes da API/Painel
+
+- Iniciar API: `uvicorn src.detector_gestos.api:app --reload`
+- Painel: `http://127.0.0.1:8000/front`
+- Endpoints úteis:
+  - `GET /start` — inicia o runner
+  - `GET /stop` — para o runner
+  - `GET /state` — estado do runner
+  - `GET /output/state` e `POST /output/set?mode=serial|local` — modo de saída
+  - `GET /kws/state`, `POST /kws/enable`, `POST /kws/disable` — controle do KWS
+  - `GET /frame.jpg` — último frame (JPEG)
+  - `GET /stream` — preview MJPEG
+  - `GET /overlay/state`, `POST /overlay/enable`, `POST /overlay/disable` — overlay
+  - `WS /ws` — eventos de gesto/KWS em tempo real
+
+—
+
+## KWS + FFmpeg (Guia Rápido)
+
+Resumo
+- Formatos aceitos:
+  - `kws-samples.json` com `samples[].spectrogram` (recomendado): treina direto (web/Python).
+  - `kws-samples.json` com `samples[].audioBase64` (WebM/Opus do navegador): requer ffmpeg para converter antes de extrair MFCC no Python.
+
+Como resolver
+1) Instalar ffmpeg e treinar normalmente no Python; ou
+2) No navegador (index.html), exportar dataset já com `samples[].spectrogram` e treinar no próprio front.
+
+Instalação do FFmpeg (Windows)
+- Winget:
+  - `winget source update`
+  - `winget search ffmpeg`
+  - `winget install --id Gyan.FFmpeg -e`
+- Chocolatey (Admin): `choco install ffmpeg -y`
+- Scoop:
+  - `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
+  - `iwr -useb get.scoop.sh | iex`
+  - `scoop install ffmpeg`
+- Manual: baixe um build estático, extraia em `C:\ffmpeg` e adicione `C:\ffmpeg\bin` ao PATH.
+
+Verificação
+- Feche/abra o terminal e rode: `ffmpeg -version`
+
+Treino (Python)
+- `python training\train_kws_model.py`

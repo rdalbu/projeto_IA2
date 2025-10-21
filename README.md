@@ -1,212 +1,181 @@
-# Controle de Mídia por Gestos com IA e ESP32
+# Controle de Mídia por Gestos e Voz (IA + ESP32)
 
-Este projeto permite controlar a reprodução de mídia (play/pause, próxima/anterior) em qualquer dispositivo com Bluetooth (como celular, tablet ou smart TV) usando gestos de mão capturados por uma webcam e/ou palavras‑chave (KWS) via microfone.
+Controle de mídia (play/pause, próxima, anterior) usando gestos de mão (webcam) e/ou palavras‑chave (microfone). A saída pode ser local (teclas multimídia no PC) ou via ESP32 como teclado Bluetooth (universal para celular/TV).
 
-O sistema utiliza Inteligência Artificial para reconhecer os gestos e um microcontrolador ESP32 para enviar os comandos como se fosse um teclado Bluetooth, tornando-o universalmente compatível.
-
-<!-- Adicionar um GIF de demonstração aqui -->
-<!-- ![Demonstração do Projeto](caminho/para/seu/gif.gif) -->
-
----
+—
 
 ## Visão Geral
 
-O projeto combina visão computacional e hardware para criar um controle de mídia intuitivo. É ideal para situações onde acessar fisicamente o dispositivo é inconveniente (exercícios, cozinha, TV distante, etc.).
+Pipeline principal
 
-Arquitetura (pipeline):
+`Webcam` → `MediaPipe Hands` → `Keras` → `Comandos` → `Serial (ESP32)` ou `Teclas Locais`
 
-`Webcam` → `Python (OpenCV)` → `Reconhecimento de IA (TensorFlow/Keras + MediaPipe Hands)` → `Fila de Comandos` → `Saída via Serial (ESP32)` ou `Teclas Locais` → `Dispositivo Alvo`
+Opcional: `Microfone` → `KWS (voz)` → `Comandos`.
 
-Opcional: `Microfone` → `KWS (voz)` → `Fila de Comandos`.
+Recursos
 
-### Funcionalidades
+- Gestos em tempo real (MediaPipe + Keras)
+- KWS (voz) opcional, tanto no navegador quanto em Python
+- Painel web (FastAPI) com preview, overlay, KWS on/off e modo de saída PC x ESP32
+- Front “Teste Rápido” em `index.html` (treina no navegador)
+- Treinadores Python (gestos e KWS) para gerar modelos finais
 
-- Reconhecimento de gestos em tempo real (MediaPipe Hands + Keras)
-- KWS (voz) opcional com MFCC e modelo Keras
-- Controle via Bluetooth (ESP32 como teclado BLE) ou teclas locais (pyautogui/teclas multimídia)
-- Interface de Linha de Comando (janela OpenCV) e API + Painel Web (preview MJPEG, overlay e log)
-- Sistema de treinamento completo (web para coleta + scripts Python para treino final)
+—
 
----
+## Estrutura
 
-## Requisitos
+- `index.html` – front de teste rápido (gestos + KWS)
+- `src/` – JS do front e utilitários de treino web
+- `src/detector_gestos/` – backend (FastAPI, runner, classificadores)
+- `treinamento/` – scripts Python de treino (gestos e KWS)
+- `esp32_sketch/esp32_controller.ino` – firmware (BLE Keyboard)
+- `models/` – saída dos treinadores (Keras/TF.js)
+- `tools/run_api.ps1` – sobe API + abre painel
 
-### Hardware
-- Webcam (qualquer padrão)
-- ESP32 (ex.: NodeMCU‑32S ou similar)
+—
 
-### Software
-- Python 3.8+
-- Arduino IDE
-- Git (opcional)
+## Instalação
 
----
+Pré‑requisitos
 
-## SETUP: Instalação e Configuração
+- Windows: Python 3.8+ e PowerShell
+- Arduino IDE para o ESP32 (opcional)
 
-Siga estes 5 passos para preparar todo o ambiente.
+Ambiente Python
 
-### Passo 1: Obter o Projeto
-
-Clone este repositório ou baixe o ZIP:
-
-```sh
-git clone https://github.com/rdalbu/projeto_IA2.git
+```
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-### Passo 2: Configurar o Ambiente Python (Recomendado)
+—
 
-Para evitar conflitos de pacotes, use um ambiente virtual.
+## Como Testar
 
-1. Abra um terminal na pasta raiz do projeto.
-2. Crie o ambiente virtual (uma vez):
-   ```sh
-   python -m venv .venv
-   ```
-3. Ative o ambiente virtual (todas as vezes que usar):
-   ```sh
-   # Windows (PowerShell/CMD)
-   .\.venv\Scripts\activate
-   ```
-4. Instale as dependências:
-   ```sh
-   pip install -r requirements.txt
-   ```
+Opção A — Teste Rápido (Front)
 
-### Passo 3: Preparar o ESP32
+1) Servir a pasta (para liberar microfone/câmera):
+```
+python -m http.server 5500
+```
+2) Abrir `http://localhost:5500/index.html` e marcar “Autorizo…”.
+3) KWS: defina palavras, grave samples, treine e teste em tempo real.
+4) Gestos: defina classes, colete frames e treine o modelo de teste.
 
-1. Abra a Arduino IDE.
-2. Instale a biblioteca `BleKeyboard` (T‑vK) em `Tools > Manage Libraries...`.
-3. Abra `esp32_sketch/esp32_controller.ino`.
-4. Selecione a placa/porta e faça o upload.
+Opção B — Painel Web (API)
 
-### Passo 4: Parear o Bluetooth
+- Script pronto:
+```
+tools\run_api.ps1
+```
+Abre `http://127.0.0.1:8000/front`.
 
-1. Com o ESP32 ligado, procure novos dispositivos Bluetooth.
-2. Pareie com **"Controle de Gestos IA"**.
-
-### Passo 5: Configurar `config.json`
-
-- Ajuste `serial_port` (ex.: "COM3", "COM5"), `usar_serial`, `indice_camera`, resoluções e FPS.
-- Caminhos dos modelos: `gesto_modelo_path`, `kws_modelo_path`, `kws_labels_path`.
-- Labels e mapeamentos: `gesto_labels`, `kws_labels`, `mapeamento_gestos`, `mapeamento_kws`.
-
----
-
-## USO: Executando a Aplicação
-
-### Modo 1 — CLI com janela OpenCV
-
-1. Conecte o ESP32 (se for usar Serial) e ative o venv.
-2. Execute:
-   ```sh
-   python -m src.detector_gestos.main
-   ```
-3. Uma janela com a imagem da câmera abrirá; o reconhecimento começa automaticamente. Comandos são enviados via serial (se habilitada) ou localmente.
-
-### Modo 2 — API + Painel Web
-
-1. Inicie a API:
-   ```sh
-   uvicorn src.detector_gestos.api:app --reload
-   ```
-2. Abra o painel em `http://127.0.0.1:8000/front`.
-3. No painel você pode iniciar/parar a IA, habilitar KWS (microfone), alternar overlay e escolher saída (PC x ESP32).
-
----
-
-## AVANÇADO: Treinando Seus Próprios Modelos
-
-### Fase 1: Coleta de Dados e Teste Rápido (Navegador)
-
-Use a interface web para coletar amostras e treinar um modelo temporário (feedback imediato).
-
-1. Inicie um servidor local na raiz: `python -m http.server`.
-2. Abra `index.html` no navegador.
-3. Siga as instruções na página para:
-   - Definir nomes dos seus gestos/palavras.
-   - Gravar várias amostras por classe.
-   - Treinar um modelo de teste rápido (no navegador).
-   - Testar em tempo real.
-4. Exporte os dados para treino final:
-   - Use “Exportar Dataset” para salvar `gesture-dataset.json` e `kws-samples.json` na pasta raiz do projeto.
-
-### Fase 2: Treinamento do Modelo Final (Terminal)
-
-1. Gestos (Keras):
-   ```sh
-   python treinamento\train_model.py
-   ```
-2. KWS (voz):
-   ```sh
-   python treinamento\train_kws_model.py
-   ```
-Ambos geram modelos em `models/`.
-
-### Fase 3: Atualizar a Configuração
-
-1. Abra `config.json`.
-2. Atualize `gesto_labels`, `kws_labels` e os mapeamentos `mapeamento_gestos`/`mapeamento_kws`.
-
----
-
-## Notas Importantes sobre KWS (voz)
-
-Há dois formatos de dataset KWS aceitos pelo trainer Python:
-
-1) `kws-samples.json` com `samples[].spectrogram` (recomendado)
-- Treina direto, não requer ffmpeg.
-
-2) `kws-samples.json` com `samples[].audioBase64` (gravado no navegador)
-- Na prática, costuma ser WebM/Opus (mesmo que o MIME diga `audio/wav`).
-- Requer ffmpeg no PATH para converter para WAV antes de extrair MFCC.
-- O script detecta o formato e indica o que fazer.
-
-#### Converter audioBase64 → espectrograma (para treino no navegador)
-
-Se você exportou um arquivo com `samples[].audioBase64` (gravação bruta), converta para espectrogramas 2D compatíveis com o treinador web:
-
-```sh
-python treinamento\convert_kws_audio_to_spectrogram.py -i kws-samples.json -o kws-samples-spectrogram.json
+- Manual:
+```
+uvicorn src.detector_gestos.api:app --reload
 ```
 
-- Para amostras WebM/Opus (MediaRecorder), é necessário ter `ffmpeg` no PATH.
-- O arquivo de saída (`kws-samples-spectrogram.json`) pode ser importado no navegador (index.html) para treinar diretamente.
+No painel: ligar IA (câmera), ligar KWS (microfone), alternar overlay e saída (PC x ESP32). O preview vem de `/stream` e eventos em tempo real via `WS /ws`.
 
-### Como instalar o FFmpeg no Windows
+Opção C — CLI (janela OpenCV)
 
-- Winget (procure um ID disponível):
-  - `winget source update`
-  - `winget search ffmpeg`
-  - `winget install --id Gyan.FFmpeg -e`
-- Chocolatey (Admin): `choco install ffmpeg -y`
-- Scoop:
-  - `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
-  - `iwr -useb get.scoop.sh | iex`
-  - `scoop install ffmpeg`
-- Manual: baixe um build estático, extraia em `C:\ffmpeg` e adicione `C:\ffmpeg\bin` ao PATH.
-- Verifique com `ffmpeg -version`.
+```
+python -m src.detector_gestos.main
+```
 
----
+—
 
-## Troubleshooting (Solução de Problemas)
+## Treino de Modelos
 
-- “CRITICAL ERROR ao conectar na porta serial…”
-  - Verifique se o ESP32 está conectado e se a COM em `config.json` é a mesma da Arduino IDE.
+Gestos (Python)
 
-- “Não foi possível abrir a câmera…”
-  - Confirme se a webcam funciona. Se tiver mais de uma, ajuste `indice_camera` (0, 1, 2…).
+```
+python treinamento\train_model.py
+```
+Gera modelo Keras e salva em `models/`. Para treinar interativamente via webcam (coleta no ato):
 
-- Gestos com baixa precisão
-  - Melhore a iluminação.
-  - Diminua `gesto_confianca_minima`.
-  - Treine com mais amostras e condições variadas.
+```
+python -m src.detector_gestos.train_gesture
+```
 
-- KWS indicando falta de ffmpeg
-  - Instale o ffmpeg (ou reexporte o dataset em formato de espectrogramas no navegador).
+KWS (Voz)
 
----
+No navegador (recomendado para teste rápido)
 
-## Contribuições
+- O front já coleta espectrogramas e treina diretamente.
+- Caso importe `kws-dataset.json` com `samples[].audioBase64`, o front agora converte automaticamente para `samples[].spectrogram` antes do treino.
 
-Contribuições são bem-vindas! Abra uma issue para relatar bugs ou sugerir melhorias.
+No Python (para modelo final/robusto)
+
+```
+python treinamento\train_kws_model.py
+```
+- Aceita `samples[].spectrogram` diretamente.
+- Aceita `samples[].audioBase64` (WebM/Opus) se o `ffmpeg` estiver no PATH (veja `docs/KWS-FFMPEG.md`).
+- Salva `models/kws/kws_model.h5` e `models/kws/kws_labels.json`.
+
+—
+
+## ESP32 (Saída Bluetooth)
+
+1) Arduino IDE → abra `esp32_sketch/esp32_controller.ino` e faça upload.
+2) Pareie o dispositivo “Controle de Gestos IA” via Bluetooth.
+3) No `config.json`, defina `usar_serial: true` e a porta (`COMx`).
+4) No painel, selecione “ESP32” em “Saída de Comandos”.
+
+—
+
+## Configuração (`config.json`)
+
+- `usar_serial`: true/false
+- `serial_port`: ex. `COM5`, `serial_baudrate`: 115200
+- `indice_camera`, `camera_width`, `camera_height`, `camera_fps`
+- `usar_modelo_gesto`, `gesto_modelo_path`, `gesto_labels`, `gesto_confianca_minima`, `frames_confirmacao_gesto`
+- `usar_kws`, `kws_modelo_path`, `kws_labels_path`, `kws_confianca_minima`, `audio_input_device_index`
+- `mapeamento_gestos`, `mapeamento_kws`
+- `preview_max_fps`, `jpeg_quality`
+
+Exemplo: `config.json:1`
+
+—
+
+## Datasets e Formatos (KWS)
+
+- `kws-samples.json` com `samples[].spectrogram` → pronto para treino web e Python
+- `kws-dataset.json`/`kws-samples.json` com `samples[].audioBase64` → web converte automaticamente; no Python requer `ffmpeg` (WebM/Opus)
+
+Consulte: `docs/KWS-FFMPEG.md:1`.
+
+—
+
+## Solução de Problemas
+
+- “Dataset usa audioBase64 e ffmpeg não está no PATH” → instale o ffmpeg ou use espectrogramas
+- “Só prediz ‘pause’ no KWS” → re‑treine após correção de `inputShape`; ideal é coletar e treinar no mesmo frontend (navegador) ou treinar no Python
+- “Falha ao abrir câmera” → ver `indice_camera`
+- “ESP32 não disponível” → ver `serial_port`; no painel, o modo volta para PC automaticamente
+
+—
+
+## Scripts Úteis
+
+- Painel rápido: `tools/run_api.ps1`
+- API manual: `uvicorn src.detector_gestos.api:app --reload`
+- Front local: `python -m http.server 5500` → `http://localhost:5500/index.html`
+- Treino KWS: `python treinamento\train_kws_model.py`
+- Treino Gestos: `python treinamento\train_model.py` ou `python -m src.detector_gestos.train_gesture`
+
+—
+
+## Formatação do Código
+
+- JS/CSS/HTML: Prettier (`.prettierrc.json`)
+- Python: Black (`pyproject.toml`). Se quiser aplicar: `pip install black && black .`
+
+—
+
+## Licença e Contribuições
+
+Sinta‑se à vontade para abrir issues e PRs. Melhorias no painel, no pipeline de treino e nas integrações são bem‑vindas.
+
